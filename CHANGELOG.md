@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.3.3] — 2026-06-10
+
+### Fixed
+- **`_list_items` missing import causes NameError**: `fs.py` and `advanced.py`
+  called `_list_items()` without importing it. Extracting shared walker code
+  in v0.3.2 omitted the import lines — any directory-traversal tool
+  (`find_duplicates`, `tree`, `disk_usage`, `mirror`) would crash at runtime
+  with `NameError: name '_list_items' is not defined`. Added `from . import
+  _list_items` to both files. (`fs.py`, `advanced.py`)
+
+### Changed (Cleanup)
+- **`_human_size` deduplicated**: Two identical copies existed in `advanced.py`
+  and `fs.py`. Moved to shared `_list_items` module in `tools/__init__.py`,
+  both files now import it. Reduces duplicate code and ensures consistent
+  formatting everywhere. (`__init__.py`, `advanced.py`, `fs.py`)
+- **`import httpx` moved to module top**: Was inside a function body
+  (`content_preview` tool), which causes repeated import overhead on each
+  call and breaks PEP 8 conventions. Moved to module-level imports.
+  (`advanced.py`)
+
+
 ## [0.3.2] — 2026-06-10
 
 ### Security
@@ -349,6 +370,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.3.3 | 2026-06-10 | _list_items import fix, _human_size dedup, import httpx moved to top |
 | 0.3.2 | 2026-06-10 | Code audit fixes: enforce_writable gaps, delete_share params bug, mirror ordering, walker dedup |
 | 0.3.1 | 2026-06-06 | OPENLIST_SKILLS, skills module, CI, tests, upgrade notice, confirm ⚠️, 401 fix |
 | 0.2.12 | 2026-06-04 | SQLITE_BUSY retry, SSRF fix for magnet/ftp/sftp |

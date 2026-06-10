@@ -98,3 +98,14 @@ async def _list_items(client, path: str, password: str = ""):
     except Exception:
         return []
 
+def _human_size(size_bytes: int) -> str:
+    """Format a byte count as a human-readable string."""
+    if size_bytes == 0:
+        return '0 B'
+    units = ["B", "KB", "MB", "GB", "TB", "PB"]
+    i = 0
+    size = float(size_bytes)
+    while size >= 1024 and i < len(units) - 1:
+        size /= 1024
+        i += 1
+    return f"{size:.1f} {units[i]}"

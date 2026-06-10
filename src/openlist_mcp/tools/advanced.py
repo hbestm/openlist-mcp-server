@@ -19,26 +19,18 @@ from mcp.server.fastmcp import FastMCP
 
 from ..client import OpenListError, get_client
 from ..config import get_config
+import httpx
 from . import (
     enforce_path_allowed,
     enforce_writable,
     normalize_names,
     validate_name,
     validate_path,
+    _human_size,
+    _list_items,
 )
 
 
-def _human_size(size_bytes: int) -> str:
-    """Format a byte count as a human-readable string."""
-    if size_bytes == 0:
-        return "0 B"
-    units = ["B", "KB", "MB", "GB", "TB", "PB"]
-    i = 0
-    size = float(size_bytes)
-    while size >= 1024 and i < len(units) - 1:
-        size /= 1024
-        i += 1
-    return f"{size:.1f} {units[i]}"
 
 
 # Internal IP ranges that should be blocked for SSRF prevention.
@@ -404,7 +396,6 @@ def register_advanced_tools(mcp: FastMCP) -> None:
             )
 
         # Fetch with range to limit bytes
-        import httpx
 
         try:
             async with httpx.AsyncClient(timeout=15) as hc:
