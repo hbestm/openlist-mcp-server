@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "openlist-mcp-server"
-version = "0.3.1"
+version = "0.3.2"
 description = "MCP Server for OpenList - enables AI agents to manage files via OpenList API"
 readme = "README.md"
 requires-python = ">=3.10"

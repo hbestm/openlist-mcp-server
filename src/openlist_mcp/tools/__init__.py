@@ -85,3 +85,16 @@ def validate_pagination(page: int, per_page: int, max_per_page: int = 200) -> No
         raise ValueError("page must be greater than or equal to 1")
     if per_page < 1 or per_page > max_per_page:
         raise ValueError(f"per_page must be between 1 and {max_per_page}")
+
+
+async def _list_items(client, path: str, password: str = ""):
+    """List items in a directory, returning parsed items or empty list on error."""
+    try:
+        data = await client.request("POST", "fs/list", json={"path": path, "page": 1, "per_page": 200, "password": password})
+        items = data.get("content", data.get("value", []))
+        if not isinstance(items, list):
+            items = []
+        return items
+    except Exception:
+        return []
+

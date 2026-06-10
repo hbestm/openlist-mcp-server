@@ -197,7 +197,7 @@ def register_share_tools(mcp: FastMCP) -> None:
             return "⚠️ Share deletion not performed. Re-run with confirm=true to delete it."
         enforce_writable("delete_share")
         client = await get_client()
-        await client.request("POST", "share/delete", params={"id": share_id})
+        await client.request("POST", "share/delete", json={"id": share_id})
         return f"Share deleted successfully: {share_id}"
 
     @mcp.tool()

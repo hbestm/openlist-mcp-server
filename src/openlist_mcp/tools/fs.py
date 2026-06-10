@@ -552,24 +552,19 @@ def register_fs_tools(mcp: FastMCP) -> None:
             seen.add(dir_path)
 
             try:
-                data = await client.request(
-                    "POST",
-                    "fs/list",
-                    json={"path": dir_path, "page": 1, "per_page": 200, "password": password},
-                )
-            except OpenListError:
+                items = await _list_items(client, dir_path, password)
+                if not items:
+                    lines.append(f"{prefix}  (error listing)")
+                    return
+            except Exception:
                 lines.append(f"{prefix}  (error listing)")
                 return
-
-            items = data.get("content", data.get("value", []))
-            if not isinstance(items, list):
-                items = []
 
             # Separate dirs and files, sort alphabetically
             dirs = sorted(
                 [i for i in items if i.get("type") in (1, "dir", "folder")], key=lambda x: x["name"]
             )
-            files = sorted([i for i in items if i not in dirs], key=lambda x: x["name"])
+            files = sorted([i for i in items if i.get("type") not in (1, "dir", "folder")], key=lambda x: x["name"])
             entries = dirs + files
 
             for idx, entry in enumerate(entries):
@@ -630,18 +625,9 @@ def register_fs_tools(mcp: FastMCP) -> None:
                 return
             seen.add(dir_path)
 
-            try:
-                data = await client.request(
-                    "POST",
-                    "fs/list",
-                    json={"path": dir_path, "page": 1, "per_page": 200, "password": password},
-                )
-            except OpenListError:
+            items = await _list_items(client, dir_path, password)
+            if not items:
                 return
-
-            items = data.get("content", data.get("value", []))
-            if not isinstance(items, list):
-                items = []
 
             for item in items:
                 name = item["name"]
@@ -792,6 +778,7 @@ def register_fs_tools(mcp: FastMCP) -> None:
             for rel in dst_files:
                 if rel not in src_files:
                     to_delete.append(rel)
+        to_copy.sort(key=lambda x: (0, x) if x.endswith("/") else (1, x))
 
         report = {
             "src_dir": src_dir,

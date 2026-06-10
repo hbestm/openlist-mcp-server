@@ -5,6 +5,53 @@ All notable changes to the OpenList MCP Server are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.3.2] — 2026-06-10
+
+### Security
+- **`update_current_user` bypasses `OPENLIST_READONLY`**: When the server is
+  configured with `OPENLIST_READONLY=true`, this tool could still change
+  passwords and base paths — a privilege escalation gap. Other write tools
+  (`add_ssh_key`, `delete_ssh_key`) correctly called `enforce_writable()`,
+  but `update_current_user` was missed. Now blocked like all other write
+  operations. (`auth.py`)
+- **`generate_torrent` bypasses `OPENLIST_READONLY`**: Generating `.torrent`
+  files is a write operation (creates files on the server), but it lacked
+  the `enforce_writable()` check. In readonly mode, the tool would silently
+  proceed, potentially filling the server with torrent metadata files despite
+  the readonly setting. (`advanced.py`)
+
+### Fixed
+- **`delete_share` sends wrong parameter format**: Used `params=` (query
+  string) while all other share tools (`cancel_share`, `enable_share`,
+  `disable_share`) use `json=` (request body). This is inconsistent — POST
+  requests with query parameters may be ignored or rejected by the OpenList
+  API, making `delete_share` silently fail while reporting success. The
+  root cause was a copy-paste oversight when the tool was added in v0.2.8.
+  (`share.py`)
+- **`mirror` may fail on nested directories**: When syncing directory trees,
+  files could be copied before their parent directories exist at the
+  destination. The operation relied on CPython's dict insertion order
+  (3.7+ behavior) rather than explicit ordering — if the API returns files
+  before directories, the copy would fail with a "parent not found" error.
+  Added `to_copy.sort()` to guarantee directories are always created first.
+  (`fs.py`)
+- **`tree` misidentifies files as directories on some API versions**: Used
+  dict equality (`i not in dirs`) to distinguish files from directories,
+  which depends on the entire dict object being identical — fragile across
+  OpenList API versions. Changed to explicit type field check
+  (`i.get("type") not in (1, "dir", "folder")`) which is robust against
+  API response changes. (`fs.py`)
+
+### Changed
+- **Extracted shared `_list_items` helper**: 4 identical recursive directory
+  walkers existed in `find_duplicates`, `tree`, `disk_usage`, and `mirror` —
+  each with their own copy of the API call, error handling, and item parsing
+  logic. A bug fix in one would easily be missed in another. Consolidated
+  into a single `_list_items()` utility in `tools/__init__.py`, reducing
+  ~50 lines of duplicate boilerplate and ensuring consistent behavior across
+  all directory-traversal tools.
+
 ## [0.3.1] — 2026-06-06
 
 ### Added
@@ -38,6 +85,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **All confirm prompts** now prefixed with `⚠️` for better AI agent visibility:
   file delete, SSH key delete, settings save/delete, index operations,
   API token reset, share cancel/delete, task cancel/delete/batch ops.
+
 
 ## [0.2.12] — 2026-06-04
 
@@ -301,6 +349,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.3.2 | 2026-06-10 | Code audit fixes: enforce_writable gaps, delete_share params bug, mirror ordering, walker dedup |
 | 0.3.1 | 2026-06-06 | OPENLIST_SKILLS, skills module, CI, tests, upgrade notice, confirm ⚠️, 401 fix |
 | 0.2.12 | 2026-06-04 | SQLITE_BUSY retry, SSRF fix for magnet/ftp/sftp |
 | 0.2.11 | 2026-06-04 | 79 tools: admin index/setting/user/meta/token tools |

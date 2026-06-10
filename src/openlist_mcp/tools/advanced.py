@@ -319,18 +319,9 @@ def register_advanced_tools(mcp: FastMCP) -> None:
                 return
             seen.add(dir_path)
 
-            try:
-                data = await client.request(
-                    "POST",
-                    "fs/list",
-                    json={"path": dir_path, "page": 1, "per_page": 200, "password": password},
-                )
-            except OpenListError:
+            items = await _list_items(client, dir_path, password)
+            if not items:
                 return
-
-            items = data.get("content", data.get("value", []))
-            if not isinstance(items, list):
-                items = []
 
             for item in items:
                 name = item["name"]
@@ -713,6 +704,7 @@ def register_advanced_tools(mcp: FastMCP) -> None:
             JSON string with generation result and path to the .torrent file.
         """
         enforce_path_allowed(path)
+        enforce_writable("generate_torrent")
         client = await get_client()
         data = await client.request(
             "POST",

@@ -150,6 +150,7 @@ def register_public_tools(mcp: FastMCP) -> None:
         """
         if not password and not base_path:
             return "Nothing to update. Provide at least one field."
+        enforce_writable("update_current_user")
         body = {}
         if password:
             if not old_password:
