@@ -15,7 +15,7 @@ import socket
 from typing import Any
 from urllib.parse import urlparse
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer as FastMCP
 
 from ..client import OpenListError, get_client
 from ..config import get_config
