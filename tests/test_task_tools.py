@@ -27,17 +27,15 @@ async def test_list_tasks_uses_typed_task_endpoint(task_tools) -> None:
 @pytest.mark.asyncio
 async def test_list_tasks_all_queries_all_categories(task_tools) -> None:
     tools, client = task_tools
+    from openlist_mcp.tools.task import TASK_TYPES
 
     result = await tools["list_tasks"](task_type="all", status="undone")
 
-    assert client.requests == [
-        ("GET", "task/copy/undone", {"params": {"page": 1, "per_page": 50}}),
-        ("GET", "task/decompress/undone", {"params": {"page": 1, "per_page": 50}}),
-        ("GET", "task/decompress_upload/undone", {"params": {"page": 1, "per_page": 50}}),
-        ("GET", "task/offline_download/undone", {"params": {"page": 1, "per_page": 50}}),
-        ("GET", "task/offline_download_transfer/undone", {"params": {"page": 1, "per_page": 50}}),
-        ("GET", "task/upload/undone", {"params": {"page": 1, "per_page": 50}}),
+    expected = [
+        ("GET", f"task/{t}/undone", {"params": {"page": 1, "per_page": 50}})
+        for t in sorted(TASK_TYPES)
     ]
+    assert client.requests == expected
     assert '"task_type": "all"' in result
     assert '"results"' in result
     assert '"total"' in result

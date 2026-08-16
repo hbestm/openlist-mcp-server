@@ -353,3 +353,78 @@ async def test_reset_api_token_sends_post_request(admin_tools) -> None:
 
     assert "reset successfully" in result
     assert client.requests == [("POST", "admin/setting/reset_token", {})]
+
+
+# ─────────────────────────── Manual Scan ────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_start_manual_scan_requires_confirm(admin_tools) -> None:
+    tools, client = admin_tools
+
+    result = await tools["start_manual_scan"]("/my-drive")
+
+    assert "not started" in result
+    assert client.requests == []
+
+
+@pytest.mark.asyncio
+async def test_start_manual_scan_sends_payload(admin_tools) -> None:
+    tools, client = admin_tools
+
+    result = await tools["start_manual_scan"]("/my-drive", limit=500, confirm=True)
+
+    assert "started" in result
+    assert client.requests == [
+        ("POST", "admin/scan/start", {"json": {"path": "/my-drive", "limit": 500.0}})
+    ]
+
+
+@pytest.mark.asyncio
+async def test_start_manual_scan_omits_zero_limit(admin_tools) -> None:
+    tools, client = admin_tools
+
+    await tools["start_manual_scan"]("/my-drive", confirm=True)
+
+    assert client.requests == [("POST", "admin/scan/start", {"json": {"path": "/my-drive"}})]
+
+
+@pytest.mark.asyncio
+async def test_stop_manual_scan_requires_confirm(admin_tools) -> None:
+    tools, client = admin_tools
+
+    result = await tools["stop_manual_scan"]()
+
+    assert "not performed" in result
+    assert client.requests == []
+
+
+@pytest.mark.asyncio
+async def test_stop_manual_scan_sends_post_request(admin_tools) -> None:
+    tools, client = admin_tools
+
+    result = await tools["stop_manual_scan"](confirm=True)
+
+    assert "stopped" in result
+    assert client.requests == [("POST", "admin/scan/stop", {})]
+
+
+@pytest.mark.asyncio
+async def test_get_manual_scan_progress_sends_get_request(admin_tools) -> None:
+    tools, client = admin_tools
+
+    await tools["get_manual_scan_progress"]()
+
+    assert client.requests == [("GET", "admin/scan/progress", {})]
+
+
+@pytest.mark.asyncio
+async def test_scan_tools_respect_readonly(admin_tools, monkeypatch) -> None:
+    tools, client = admin_tools
+    monkeypatch.setenv("OPENLIST_READONLY", "true")
+    monkeypatch.setattr("openlist_mcp.config._config", None)
+
+    with pytest.raises(PermissionError, match="OPENLIST_READONLY"):
+        await tools["start_manual_scan"]("/my-drive", confirm=True)
+
+    assert client.requests == []

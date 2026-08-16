@@ -62,21 +62,31 @@ async def test_update_share_sends_id_and_files(share_tools) -> None:
 
 
 @pytest.mark.asyncio
-async def test_disable_share_sends_id(share_tools) -> None:
+async def test_disable_share_sends_query_param(share_tools) -> None:
     tools, client = share_tools
 
     await tools["disable_share"](share_id="abc123")
 
-    assert client.requests == [("POST", "share/disable", {"json": {"id": "abc123"}})]
+    # OpenList reads ?id= from the query string for share/disable, not the body.
+    assert client.requests == [("POST", "share/disable", {"params": {"id": "abc123"}})]
 
 
 @pytest.mark.asyncio
-async def test_enable_share_sends_id(share_tools) -> None:
+async def test_enable_share_sends_query_param(share_tools) -> None:
     tools, client = share_tools
 
     await tools["enable_share"](share_id="abc123")
 
-    assert client.requests == [("POST", "share/enable", {"json": {"id": "abc123"}})]
+    assert client.requests == [("POST", "share/enable", {"params": {"id": "abc123"}})]
+
+
+@pytest.mark.asyncio
+async def test_cancel_share_sends_query_param(share_tools) -> None:
+    tools, client = share_tools
+
+    await tools["cancel_share"](share_id="abc123", confirm=True)
+
+    assert client.requests == [("POST", "share/disable", {"params": {"id": "abc123"}})]
 
 
 @pytest.mark.asyncio

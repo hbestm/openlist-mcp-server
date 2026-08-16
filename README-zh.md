@@ -32,7 +32,7 @@
 | **Torrent** | 解析 .torrent 文件、为已有文件生成种子、秒传 |
 | **认证** | 自动 JWT 登录（支持 TOTP/2FA）、过期自动重登 |
 
-**共 79 个工具** — 详见下方[工具参考](#工具参考)。
+**共 87 个工具** — 详见下方[工具参考](#工具参考)。
 
 ---
 
@@ -67,7 +67,7 @@ export OPENLIST_ALLOWED_PATHS="/mcp-dev-test,/public"      # 限制可操作的�
 export OPENLIST_LOCAL_UPLOAD_ROOTS="/tmp:/允许的目录"      # 启用本地文件上传
 export OPENLIST_TOTP_SECRET="你的_totp_密钥"               # 自动生成 2FA 验证码
 export OPENLIST_ALLOW_HTTP="false"                         # 允许 HTTP（不安全，仅局域网使用）
-export OPENLIST_SKILLS="core"                              # 工具组: core(~25个), default(~44个), all(~79个)
+export OPENLIST_SKILLS="core"                              # 工具组: core(30个), default(49个), all(87个)
 ```
 
 ### 3. 验证
@@ -163,7 +163,12 @@ openlist-mcp
 |------|------|
 | `get_download_url` | 获取文件下载直链或代理链接。 |
 | `upload_file` | 通过 base64 上传文件内容（最大 100MB）。 |
+| `upload_file_multipart` | 通过可续传的 multipart 分块 API 上传 base64 内容（支持大文件、断点续传）。需 OpenList 含 multipart API 的版本（v4.2.5 之后的 master）。 |
 | `upload_local_file` | 上传 MCP 服务器可读取的本地文件。默认禁用，需设 `OPENLIST_LOCAL_UPLOAD_ROOTS`。 |
+| `multipart_upload_local_file` | 通过可续传的 multipart API 流式上传本地文件，不占用内存。 |
+| `multipart_upload_status` | 查询 multipart 上传会话进度（按 upload_id 或 path+size）。 |
+| `multipart_abort_upload` | 中止 multipart 上传会话并丢弃分块。需 `confirm=true`。 |
+| `get_direct_upload_info` | 获取支持直传的后端（S3 等）的客户端直传凭据。 |
 
 ### 任务管理
 
@@ -217,6 +222,9 @@ openlist-mcp
 | `list_metas` | 列出所有元数据配置。 |
 | `get_meta` | 按 ID 查看元数据详情。 |
 | `reset_api_token` | 生成新的 API Token。需要 `confirm=true`。 |
+| `start_manual_scan` | 启动对某个存储挂载点的一次性手动扫描。需要 `confirm=true`。 |
+| `stop_manual_scan` | 停止正在运行的手动扫描。需要 `confirm=true`。 |
+| `get_manual_scan_progress` | 获取手动扫描的进度。 |
 | `list_my_ssh_keys` | 列出当前用户的 SSH 公钥。 |
 | `add_ssh_key` | 添加新的 SSH 公钥。受 `OPENLIST_READONLY` 保护。 |
 | `delete_ssh_key` | 按 ID 删除 SSH 公钥。需要 `confirm=true`。 |

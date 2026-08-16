@@ -156,3 +156,27 @@ async def test_copy_validates_each_name(fs_tools) -> None:
         await tools["copy"]("/src", "/dst", ["good.txt", "bad/name.txt"])
 
     assert client.requests == []
+
+
+@pytest.mark.asyncio
+async def test_tree_respects_allowed_paths(fs_tools, monkeypatch) -> None:
+    tools, client = fs_tools
+    monkeypatch.setenv("OPENLIST_ALLOWED_PATHS", "/safe")
+    monkeypatch.setattr("openlist_mcp.config._config", None)
+
+    with pytest.raises(PermissionError, match="outside OPENLIST_ALLOWED_PATHS"):
+        await tools["tree"]("/private")
+
+    assert client.requests == []
+
+
+@pytest.mark.asyncio
+async def test_disk_usage_respects_allowed_paths(fs_tools, monkeypatch) -> None:
+    tools, client = fs_tools
+    monkeypatch.setenv("OPENLIST_ALLOWED_PATHS", "/safe")
+    monkeypatch.setattr("openlist_mcp.config._config", None)
+
+    with pytest.raises(PermissionError, match="outside OPENLIST_ALLOWED_PATHS"):
+        await tools["disk_usage"]("/private")
+
+    assert client.requests == []

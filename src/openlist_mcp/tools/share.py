@@ -177,7 +177,7 @@ def register_share_tools(mcp: FastMCP) -> None:
             return "⚠️ Share cancellation not performed. Re-run with confirm=true to cancel it."
         enforce_writable("cancel_share")
         client = await get_client()
-        await client.request("POST", "share/disable", json={"id": share_id})
+        await client.request("POST", "share/disable", params={"id": share_id})
         return f"Share cancelled successfully: {share_id}"
 
     @mcp.tool()
@@ -197,7 +197,7 @@ def register_share_tools(mcp: FastMCP) -> None:
             return "⚠️ Share deletion not performed. Re-run with confirm=true to delete it."
         enforce_writable("delete_share")
         client = await get_client()
-        await client.request("POST", "share/delete", json={"id": share_id})
+        await client.request("POST", "share/delete", params={"id": share_id})
         return f"Share deleted successfully: {share_id}"
 
     @mcp.tool()
@@ -212,7 +212,7 @@ def register_share_tools(mcp: FastMCP) -> None:
         """
         enforce_writable("enable_share")
         client = await get_client()
-        await client.request("POST", "share/enable", json={"id": share_id})
+        await client.request("POST", "share/enable", params={"id": share_id})
         return f"Share enabled successfully: {share_id}"
 
     @mcp.tool()
@@ -229,5 +229,5 @@ def register_share_tools(mcp: FastMCP) -> None:
         """
         enforce_writable("disable_share")
         client = await get_client()
-        await client.request("POST", "share/disable", json={"id": share_id})
+        await client.request("POST", "share/disable", params={"id": share_id})
         return f"Share disabled successfully: {share_id}"

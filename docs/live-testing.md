@@ -62,6 +62,29 @@ PYTHONPATH=src python scripts/check_task_api.py
 The script creates a folder named `mcp-test-<timestamp>` under `OPENLIST_TEST_DIR`
 and attempts to delete it during cleanup.
 
+## Manual live checks for the v0.4.0 fixes
+
+When testing against a real OpenList instance, verify these behaviors that the
+unit tests can only approximate:
+
+1. **Share enable/disable/delete** — create a share, then run
+   `enable_share` / `disable_share` / `delete_share` with the returned id.
+   These must not return "sharing not found" (they send `?id=` as a query
+   parameter now).
+2. **Share list/get** — `list_shares` then `get_share_info(share_id)`.
+3. **`move` task type** — after a `move` operation, `list_tasks(task_type="move")`
+   must succeed (previously rejected as unsupported).
+4. **Multipart upload** (requires OpenList master after v4.2.5 with the
+   `multipart_enabled` admin setting): `upload_file_multipart` on a small
+   file; on failure, verify `multipart_upload_status` returns a session and
+   `multipart_abort_upload` discards it.
+5. **Manual scan** (admin account): `start_manual_scan` on a storage mount,
+   `get_manual_scan_progress`, then `stop_manual_scan`.
+
+Note: multipart endpoints return "multipart upload is disabled" (403) if the
+server build or admin setting does not support them — that is expected on
+older v4.2.x deployments.
+
 ## Safety controls
 
 The MCP server supports these environment-level safety controls:

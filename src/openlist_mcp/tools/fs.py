@@ -19,8 +19,6 @@ from . import (
 )
 
 
-
-
 def register_fs_tools(mcp: FastMCP) -> None:
     """Register file system operation MCP tools."""
 
@@ -529,6 +527,7 @@ def register_fs_tools(mcp: FastMCP) -> None:
         Returns:
             A formatted string showing the directory tree.
         """
+        enforce_path_allowed(path)
         client = await get_client()
 
         lines = []
@@ -555,7 +554,10 @@ def register_fs_tools(mcp: FastMCP) -> None:
             dirs = sorted(
                 [i for i in items if i.get("type") in (1, "dir", "folder")], key=lambda x: x["name"]
             )
-            files = sorted([i for i in items if i.get("type") not in (1, "dir", "folder")], key=lambda x: x["name"])
+            files = sorted(
+                [i for i in items if i.get("type") not in (1, "dir", "folder")],
+                key=lambda x: x["name"],
+            )
             entries = dirs + files
 
             for idx, entry in enumerate(entries):
@@ -599,6 +601,7 @@ def register_fs_tools(mcp: FastMCP) -> None:
         Returns:
             JSON string with size breakdown by directory and file type.
         """
+        enforce_path_allowed(path)
         client = await get_client()
 
         total_size = 0

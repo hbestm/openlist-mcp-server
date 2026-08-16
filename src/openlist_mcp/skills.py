@@ -41,7 +41,12 @@ SKILL_GROUP_TOOLS: dict[str, list[str]] = {
     "transfer": [
         "get_download_url",
         "upload_file",
+        "upload_file_multipart",
         "upload_local_file",
+        "multipart_upload_local_file",
+        "multipart_upload_status",
+        "multipart_abort_upload",
+        "get_direct_upload_info",
     ],
     "task": [
         "list_tasks",
@@ -86,6 +91,9 @@ SKILL_GROUP_TOOLS: dict[str, list[str]] = {
         "list_metas",
         "get_meta",
         "reset_api_token",
+        "start_manual_scan",
+        "stop_manual_scan",
+        "get_manual_scan_progress",
     ],
     "advanced": [
         "get_capabilities",

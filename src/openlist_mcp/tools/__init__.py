@@ -1,6 +1,7 @@
 """OpenList MCP Tools package."""
 
 import posixpath
+from typing import Any
 
 from ..config import get_config
 
@@ -87,10 +88,12 @@ def validate_pagination(page: int, per_page: int, max_per_page: int = 200) -> No
         raise ValueError(f"per_page must be between 1 and {max_per_page}")
 
 
-async def _list_items(client, path: str, password: str = ""):
+async def _list_items(client: Any, path: str, password: str = "") -> list[dict]:
     """List items in a directory, returning parsed items or empty list on error."""
     try:
-        data = await client.request("POST", "fs/list", json={"path": path, "page": 1, "per_page": 200, "password": password})
+        data = await client.request(
+            "POST", "fs/list", json={"path": path, "page": 1, "per_page": 200, "password": password}
+        )
         items = data.get("content", data.get("value", []))
         if not isinstance(items, list):
             items = []
@@ -98,10 +101,11 @@ async def _list_items(client, path: str, password: str = ""):
     except Exception:
         return []
 
+
 def _human_size(size_bytes: int) -> str:
     """Format a byte count as a human-readable string."""
     if size_bytes == 0:
-        return '0 B'
+        return "0 B"
     units = ["B", "KB", "MB", "GB", "TB", "PB"]
     i = 0
     size = float(size_bytes)

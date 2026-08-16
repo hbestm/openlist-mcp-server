@@ -15,7 +15,7 @@ Environment Variables:
     OPENLIST_READONLY - When true, blocks all write/modify tools (optional)
     OPENLIST_ALLOWED_PATHS - Comma-separated path allowlist (optional)
     OPENLIST_SKILLS   - Tool groups to load: core|default|all|custom (optional)
-                        core=~25tools, default=~44tools, all=79tools(default)
+                        core=~25tools, default=~44tools, all=87tools(default)
                         custom example: "fs,transfer,task"
 """
 
@@ -30,7 +30,14 @@ from mcp.server.fastmcp import FastMCP
 
 from . import __version__  # noqa: F401 — used in except ValueError branch
 from .config import get_config
-from .skills import ALWAYS_LOADED, SKILL_GROUP_META, SKILL_PRESETS, group_count, resolve_skills
+from .skills import (
+    ALWAYS_LOADED,
+    SKILL_GROUP_META,
+    SKILL_PRESETS,
+    count_tools,
+    group_count,
+    resolve_skills,
+)
 from .tools.admin import register_admin_tools
 from .tools.advanced import register_advanced_tools
 from .tools.auth import register_auth_tools, register_public_tools
@@ -112,7 +119,10 @@ def _banner_skills(raw_skills: str) -> tuple[int, list[str], str, str]:
     if raw_skills in ("core",) or all(
         g not in selected for g in ("admin", "advanced", "task", "share")
     ):
-        upgrade_notice = "║  Tip: Set OPENLIST_SKILLS=all to load all 79 tools.              ║\n"
+        all_count = count_tools(set(SKILL_PRESETS["all"]))
+        upgrade_notice = (
+            f"║  Tip: Set OPENLIST_SKILLS=all to load all {all_count} tools.        ║\n"
+        )
     preset_label = raw_skills if raw_skills in SKILL_PRESETS else "custom"
     return total, group_details, f"{preset_label:<17} {total:>3} tools loaded", upgrade_notice
 
@@ -131,7 +141,7 @@ def main() -> None:
         print(
             "\n"
             "╔══════════════════════════════════════════════════════════════╗\n"
-            "║              OpenList MCP Server v{__version__:<24}║\n"
+            f"║              OpenList MCP Server v{__version__:<24}║\n"
             "╠══════════════════════════════════════════════════════════════╣\n"
             "║                                                              ║\n"
             "║  What is this?                                               ║\n"
@@ -153,9 +163,9 @@ def main() -> None:
             "║    export OPENLIST_PASSWORD=your_password                    ║\n"
             "║                                                              ║\n"
             "║  Skill config (optional):                                    ║\n"
-            "║    export OPENLIST_SKILLS=core      # ~25个基础工具          ║\n"
-            "║    export OPENLIST_SKILLS=default   # ~44个日常工具          ║\n"
-            "║    export OPENLIST_SKILLS=all       # 全部79个工具           ║\n"
+            "║    export OPENLIST_SKILLS=core      # 基础工具                   ║\n"
+            "║    export OPENLIST_SKILLS=default   # 日常工具                   ║\n"
+            "║    export OPENLIST_SKILLS=all       # 全部87个工具           ║\n"
             "║    # 或自定义组合: export OPENLIST_SKILLS=fs,transfer,task  ║\n"
             "║                                                              ║\n"
             + upgrade_notice

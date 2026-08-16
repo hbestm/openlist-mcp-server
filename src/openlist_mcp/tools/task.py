@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 TASK_TYPES = {
     "upload",
     "copy",
+    "move",
     "offline_download",
     "offline_download_transfer",
     "decompress",
@@ -58,11 +59,11 @@ def register_task_tools(mcp: FastMCP) -> None:
         """List asynchronous tasks by OpenList task type and status.
 
         OpenList v4 exposes task APIs as `/api/task/{task_type}/{status}`.
-        Common task types include offline_download, upload, copy, and decompress.
+        Common task types include offline_download, upload, copy, move, and decompress.
         Use task_type="all" to query all task categories simultaneously.
 
         Args:
-            task_type: Task category: offline_download, upload, copy, decompress,
+            task_type: Task category: offline_download, upload, copy, move, decompress,
                        offline_download_transfer, decompress_upload, or "all" (all types).
             status: Task list status: "undone" for running/pending or "done" for completed.
             page: Page number for deployments that support pagination.
@@ -133,7 +134,7 @@ def register_task_tools(mcp: FastMCP) -> None:
 
         Args:
             task_id: The task ID returned by OpenList.
-            task_type: Task category, e.g. offline_download, upload, copy.
+            task_type: Task category, e.g. offline_download, upload, copy, move.
 
         Returns:
             JSON string with task details.

@@ -56,7 +56,7 @@ def register_admin_tools(mcp: FastMCP) -> None:
         """List all registered storage driver names on the server.
 
         Shows what storage backend types are available (Local, S3, OneDrive,
-        **************, etc.).
+        115, 189PC, AliyunDrive, etc.).
 
         Returns:
             JSON list of driver names.
@@ -400,3 +400,65 @@ def register_admin_tools(mcp: FastMCP) -> None:
         data = await client.request("POST", "admin/setting/reset_token")
         result = json.dumps(data, indent=2, ensure_ascii=False)
         return f"API token reset successfully. Result: {result}"
+
+    # ─────────────────────────── Manual Scan ───────────────────────────────────
+
+    @mcp.tool()
+    async def start_manual_scan(
+        path: str,
+        limit: float = 0,
+        confirm: bool = False,
+    ) -> str:
+        """Start a one-off manual scan of a storage mount (Admin only).
+
+        Useful when a driver misses changes (e.g. files added out-of-band)
+        and you do not want to rescan every mount. Use
+        get_manual_scan_progress to monitor, and stop_manual_scan to cancel.
+
+        Args:
+            path: Storage mount path to scan (e.g. "/my-drive").
+            limit: Optional scan limit (objects to process). 0 = no limit.
+            confirm: Must be true to actually start. Defaults to false.
+
+        Returns:
+            Success message or confirmation-required message.
+        """
+        if not confirm:
+            return "⚠️ Manual scan not started. Re-run with confirm=true to start the scan."
+        enforce_writable("start_manual_scan")
+        body: dict = {"path": path}
+        if limit and limit > 0:
+            body["limit"] = limit
+        client = await get_client()
+        await client.request("POST", "admin/scan/start", json=body)
+        return f"Manual scan started for: {path}"
+
+    @mcp.tool()
+    async def stop_manual_scan(confirm: bool = False) -> str:
+        """Stop a running manual scan (Admin only).
+
+        Args:
+            confirm: Must be true to actually stop. Defaults to false.
+
+        Returns:
+            Success message or confirmation-required message.
+        """
+        if not confirm:
+            return "⚠️ Manual scan stop not performed. Re-run with confirm=true to stop the scan."
+        enforce_writable("stop_manual_scan")
+        client = await get_client()
+        await client.request("POST", "admin/scan/stop")
+        return "Manual scan stopped."
+
+    @mcp.tool()
+    async def get_manual_scan_progress() -> str:
+        """Get the progress of the running (or last) manual scan (Admin only).
+
+        Returns the number of objects scanned and whether the scan is done.
+
+        Returns:
+            JSON string with {obj_count, is_done}.
+        """
+        client = await get_client()
+        data = await client.request("GET", "admin/scan/progress")
+        return json.dumps(data, indent=2, ensure_ascii=False)

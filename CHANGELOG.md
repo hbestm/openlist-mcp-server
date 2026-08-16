@@ -6,6 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.4.0] — 2026-06-14
+
+### Fixed
+- **Share enable/disable/delete/cancel were broken against the real OpenList
+  API**: OpenList reads the share id from the query string
+  (`c.Query("id")` — verified in v4.2.2, v4.2.5, and master), but the tools
+  sent it in the JSON body, so every call failed with "sharing not found".
+  All four now send `params={"id": ...}`; tests for enable/disable/cancel
+  previously encoded the wrong contract and now assert the query string.
+  (`share.py`, `tests/test_share_tools.py`)
+- **Fresh installs crashed at import**: `mcp>=1.0.0` resolved to mcp 2.x,
+  which removed `mcp.server.fastmcp`. Dependency is now capped at
+  `mcp>=1.0.0,<2.0.0`. (`pyproject.toml`)
+- **`OPENLIST_ALLOWED_PATHS` allowlist bypass**: `tree`, `disk_usage`, and
+  `find_duplicates` traversed directories without checking the allowlist.
+  All three now call `enforce_path_allowed`. (`fs.py`, `advanced.py`)
+- **`delete_share` unit test was red**: The test asserting the query-param
+  contract was left stale by the v0.3.2 change; it now passes again.
+- **`_reject_internal_url` blocked the event loop**: synchronous
+  `socket.getaddrinfo` inside offline-download tools froze the MCP server
+  during DNS resolution. Now uses `asyncio.get_running_loop().getaddrinfo`.
+  (`advanced.py`)
+- **Startup banner printed a literal `{__version__}`**: the version line was
+  missing its `f` prefix. (`server.py`)
+- **`torrent_upload_parse` crashed on malformed base64**: now returns a
+  friendly error instead of raising `binascii.Error`. (`advanced.py`)
+- **Masked driver names in `list_drivers` docstring**: restored readable
+  examples (Local, S3, OneDrive, 115, 189PC, AliyunDrive, ...). (`admin.py`)
+
+### Added
+- **Resumable multipart upload support** (requires an OpenList build with the
+  multipart API — master after v4.2.5 — and the `multipart_enabled` setting):
+  - `upload_file_multipart` — base64 content via `/fs/multipart/*`.
+  - `multipart_upload_local_file` — stream local files from disk without
+    loading them into memory.
+  - `multipart_upload_status` — query progress by upload_id or path+size.
+  - `multipart_abort_upload` — discard an in-progress session (confirm-gated).
+  - Re-invoking an upload with the same path/name/size resumes the session;
+    already-received chunks are skipped via the server's `received` ranges.
+  (`client.py`, `transfer.py`)
+- **`get_direct_upload_info`** — client-side direct upload credentials for
+  storage backends that support direct upload (S3, etc.). (`transfer.py`)
+- **Manual scan administration**: `start_manual_scan`, `stop_manual_scan`,
+  `get_manual_scan_progress` — one-off scans of a storage mount. (`admin.py`)
+- **`move` task type** — previously missing from `TASK_TYPES`, so move tasks
+  could not be listed/managed. (`task.py`)
+
+### Changed
+- Tool count increased from 79 to **87** across all categories.
+- `upload_file` / `upload_local_file` now report a synchronous upload that
+  returns `{"value": null}` from OpenList as "uploaded successfully" instead
+  of "Upload task created". (`transfer.py`)
+- Banner and README tool counts are no longer hardcoded where feasible;
+  startup banner now reports dynamic counts.
+- `docs/api-compatibility.md` rewritten: corrected task list verb (GET, not
+  POST), documented the share query-string contract, the multipart API, the
+  move task type, direct upload, and manual-scan endpoints.
+
 ## [0.3.3] — 2026-06-10
 
 ### Fixed
@@ -370,6 +428,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.4.0 | 2026-06-14 | Share query-param fix, mcp<2 pin, multipart resumable upload, direct upload, manual scan, move tasks, allowlist gaps fixed |
 | 0.3.3 | 2026-06-10 | _list_items import fix, _human_size dedup, import httpx moved to top |
 | 0.3.2 | 2026-06-10 | Code audit fixes: enforce_writable gaps, delete_share params bug, mirror ordering, walker dedup |
 | 0.3.1 | 2026-06-06 | OPENLIST_SKILLS, skills module, CI, tests, upgrade notice, confirm ⚠️, 401 fix |
