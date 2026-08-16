@@ -95,3 +95,27 @@ The MCP server supports these environment-level safety controls:
 
 Do not use production admin credentials for routine live testing. Use a test account
 with the minimum OpenList permissions required for the scenario.
+
+## Automated live-regression scripts (v0.4.0)
+
+The repository ships ready-to-run live suites that drive the *real* MCP tool
+functions (and, for the e2e script, the actual stdio server) against a live
+OpenList. All writes are confined to a timestamped subtree under `/test`
+(or any mount you point the scripts at) and removed afterwards; global admin
+destructives (index build/clear, `reset_api_token`, `clear_*` on other users'
+data, `save_settings`) are deliberately not executed.
+
+```bash
+export OPENLIST_URL=http://host:5244 OPENLIST_USERNAME=admin \
+       OPENLIST_PASSWORD=... OPENLIST_ALLOW_HTTP=true
+python scripts/fulltest_mcp_tools.py     # 60 checks — every tool group, real payloads
+python scripts/fulltest_stability.py     # 16 checks — repeats, concurrency, bad inputs, re-auth
+python scripts/fulltest_mcp_e2e.py       # 22 checks — full MCP protocol over stdio
+# safety gates (subprocess envs):
+OPENLIST_READONLY=true TEST_MODE=readonly python scripts/fulltest_safety_gates.py
+OPENLIST_ALLOWED_PATHS=/test TEST_MODE=allowed_paths python scripts/fulltest_safety_gates.py
+```
+
+Reference result on OpenList v4.2.2 (b28208bd): 60/60, 16/16, 22/22, 8/8 and
+5/5 respectively — all green. Multipart tools are expected to fail gracefully
+("endpoint may be unavailable…") on v4.2.x servers.
