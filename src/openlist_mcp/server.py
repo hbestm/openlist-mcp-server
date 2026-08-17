@@ -165,7 +165,7 @@ def main() -> None:
             "║  Skill config (optional):                                    ║\n"
             "║    export OPENLIST_SKILLS=core      # 基础工具                   ║\n"
             "║    export OPENLIST_SKILLS=default   # 日常工具                   ║\n"
-            "║    export OPENLIST_SKILLS=all       # 全部87个工具           ║\n"
+            f"║    export OPENLIST_SKILLS=all       # 全部{count_tools(set(SKILL_PRESETS['all']))}个工具        ║\n"
             "║    # 或自定义组合: export OPENLIST_SKILLS=fs,transfer,task  ║\n"
             "║                                                              ║\n"
             + upgrade_notice

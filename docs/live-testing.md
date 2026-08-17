@@ -115,11 +115,21 @@ export OPENLIST_URL=http://host:5244 OPENLIST_USERNAME=admin \
 python scripts/fulltest_mcp_tools.py     # 60 checks — every tool group, real payloads
 python scripts/fulltest_stability.py     # 16 checks — repeats, concurrency, bad inputs, re-auth
 python scripts/fulltest_mcp_e2e.py       # 22 checks — full MCP protocol over stdio
+python scripts/live_test_multipart.py    # 9 checks — resumable multipart upload (v4.2.5+)
+python scripts/live_test_p1_admin.py     # 21 checks — storage CRUD, driver configs, user write
 # safety gates (subprocess envs):
 OPENLIST_READONLY=true TEST_MODE=readonly python scripts/fulltest_safety_gates.py
 OPENLIST_ALLOWED_PATHS=/test TEST_MODE=allowed_paths python scripts/fulltest_safety_gates.py
 ```
 
-Reference result on OpenList v4.2.2 (b28208bd): 60/60, 16/16, 22/22, 8/8 and
-5/5 respectively — all green. Multipart tools are expected to fail gracefully
-("endpoint may be unavailable…") on v4.2.x servers.
+Reference results on OpenList v4.2.5 (cc87e88): 60/60, 16/16, 22/22, 13/13,
+9/9 (multipart) and 21/21 (P1 admin) — all green.
+
+`live_test_p1_admin.py` exercises the v0.5.0 admin-write tools with fully
+reversible changes: it creates a temporary `Local` storage mounted on
+`/mcp-p1-*` (root `/tmp`), exercises update/disable/enable/delete, writes an
+aria2 config and restores it (the server keeps built-in setting keys, so
+"restore" writes the previous values back), and creates/updates/removes a
+throwaway user. It cleans up after itself; a failed probe (e.g. aria2
+offline) is expected and reported as "configuration saved, but the client
+probe failed".

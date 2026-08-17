@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.5.0] — 2026-08-16
+
+### Added
+- **Storage management (write)** (`admin.py`) — 6 new tools: `create_storage`,
+  `update_storage`, `delete_storage`, `enable_storage`, `disable_storage`,
+  `load_all_storages`. `update_storage` reads the current config first and only
+  applies the provided fields, so unspecified settings are preserved.
+  `create_storage` surfaces a readable note when the server persisted the
+  record but mounting failed (e.g. bad `root_folder_path`), pointing at
+  `update_storage`/`delete_storage` to fix or remove it.
+- **Offline-download client configuration** (`admin.py`) — 12 new tools:
+  `set_aria2`, `set_qbittorrent`, `set_transmission`, `set_115`,
+  `set_115_open`, `set_123_pan`, `set_123_open`, `set_pikpak`, `set_thunder`,
+  `set_thunderx`, `set_thunder_browser`, `set_guangyapan`. The server saves
+  these settings before probing the client, so a failed probe (e.g. aria2
+  offline) is reported as "configuration saved, but the client probe failed"
+  instead of a hard error that hides the persisted change.
+- **User management (write)** (`admin.py`) — 2 new tools: `create_user`
+  (rejects guest/admin roles client-side as the server does) and
+  `update_user` (read-then-merge; role cannot change via API).
+- Admin skill group grows 22 → 42 tools; total tool count 87 → **107**.
+  Tool counts in the startup banner are now derived at runtime.
+
+### Fixed
+- **`delete_setting` never deleted anything**: the server reads the key from
+  the query string (`c.Query("key")`), but the tool sent it in the JSON body,
+  so the key was always empty. Now sends `params={"key": key}`.
+
+### Changed
+- Update/create payloads for storage and user are built by read-then-merge so
+  partially specified updates cannot zero out untouched fields.
+
 ## [0.4.1] — 2026-08-16
 
 ### Fixed
