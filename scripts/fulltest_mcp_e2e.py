@@ -109,10 +109,10 @@ async def main() -> None:
             r = await call(session, "list_tasks", {"task_type": t, "status": "done"})
             check(f"list_tasks({t}) via protocol", "value" in text(r), text(r)[:50])
 
-        # 5. multipart graceful failure via protocol
+        # 5. multipart upload via protocol (v4.2.5+)
         r = await call(session, "upload_file_multipart", {"path": base, "file_name": "big.bin",
                                                           "file_content_base64": "Ymln", "chunk_size": 8})
-        check("multipart graceful on v4.2.2", "unavailable" in text(r) or "html" in text(r).lower(), text(r)[:80])
+        check("multipart upload via protocol", "complete" in text(r).lower() or "ok" in text(r).lower(), text(r)[:80])
 
         # 6. manual scan via protocol
         r = await call(session, "start_manual_scan", {"path": "/test", "confirm": True})

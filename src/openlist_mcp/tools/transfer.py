@@ -6,6 +6,7 @@ import asyncio
 import base64
 import binascii
 import contextlib
+import hashlib
 import json
 import os
 from collections.abc import AsyncIterator
@@ -38,6 +39,20 @@ def _received_chunk_indexes(received_ranges: list | None) -> set[int]:
         except (TypeError, ValueError):
             continue
     return indexes
+
+
+def _md5_hexdigest(data: bytes) -> str:
+    """MD5 of an in-memory upload payload (used as the resume identity proof)."""
+    return hashlib.md5(data).hexdigest()
+
+
+def _md5_hexdigest_file(path: Path) -> str:
+    """Streaming MD5 of a local file (used as the resume identity proof)."""
+    digest = hashlib.md5()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 def _has_task_result(data: dict | None) -> bool:
@@ -94,11 +109,24 @@ async def _run_multipart_upload(
     (streamed from disk) must be provided.
     """
     effective_chunk = max(MIN_MULTIPART_CHUNK, int(chunk_size))
+
+    # OpenList (post-v4.2.5) only lets a client resume an in-progress session
+    # when it can prove the new upload is the same file: it requires a matching
+    # hash (X-File-Md5 etc.). Without one, the server treats the retry as a new
+    # file, terminates the old session and re-uploads everything. Always send
+    # the MD5 of the payload so interrupted uploads genuinely resume.
+    file_md5: str | None = None
+    if data is not None:
+        file_md5 = _md5_hexdigest(data)
+    elif file_path is not None:
+        file_md5 = _md5_hexdigest_file(file_path)
+
     init_data = await client.multipart_init(
         file_path=target_path,
         file_size=total_size,
         chunk_size=effective_chunk,
         overwrite=overwrite,
+        file_md5=file_md5,
     )
     upload_id = init_data.get("upload_id", "")
     if not upload_id:
@@ -116,7 +144,12 @@ async def _run_multipart_upload(
             if status:
                 skip_indexes = _received_chunk_indexes(status.get("received"))
 
-    total_chunks = (total_size + effective_chunk - 1) // effective_chunk
+    # Slice by the server's actual session chunk size (returned by init) so we
+    # agree with the session even when the server clamped or resumed an older
+    # session with a different chunk size.
+    server_chunk = init_data.get("chunk_size")
+    slice_chunk = int(server_chunk) if server_chunk and int(server_chunk) > 0 else effective_chunk
+    total_chunks = (total_size + slice_chunk - 1) // slice_chunk
     sent = 0
     errors: list[str] = []
     file_obj = file_path.open("rb") if file_path else None
@@ -126,11 +159,11 @@ async def _run_multipart_upload(
                 sent += 1
                 continue
             if file_obj is not None:
-                file_obj.seek(index * effective_chunk)
-                chunk = file_obj.read(min(effective_chunk, total_size - index * effective_chunk))
+                file_obj.seek(index * slice_chunk)
+                chunk = file_obj.read(min(slice_chunk, total_size - index * slice_chunk))
             else:
-                start = index * effective_chunk
-                chunk = data[start : start + effective_chunk]  # type: ignore[index]
+                start = index * slice_chunk
+                chunk = data[start : start + slice_chunk]  # type: ignore[index]
             try:
                 await client.multipart_chunk(upload_id, index, chunk)
                 sent += 1

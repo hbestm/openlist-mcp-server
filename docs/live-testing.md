@@ -74,16 +74,20 @@ unit tests can only approximate:
 2. **Share list/get** — `list_shares` then `get_share_info(share_id)`.
 3. **`move` task type** — after a `move` operation, `list_tasks(task_type="move")`
    must succeed (previously rejected as unsupported).
-4. **Multipart upload** (requires OpenList master after v4.2.5 with the
-   `multipart_enabled` admin setting): `upload_file_multipart` on a small
-   file; on failure, verify `multipart_upload_status` returns a session and
+4. **Multipart upload** (OpenList **v4.2.5+** with the `multipart_enabled`
+   admin setting turned on): `upload_file_multipart` on a small file and on a
+   multi-chunk file (>1 MiB). To verify resume, interrupt a session and re-run
+   the same upload — the tool sends the payload MD5 (`X-File-Md5`) as the
+   identity proof, so the server reuses the same session and skips
+   already-received chunks; check the second run reports the same `upload_id`.
+   `multipart_upload_status` on a live session returns the received ranges and
    `multipart_abort_upload` discards it.
 5. **Manual scan** (admin account): `start_manual_scan` on a storage mount,
    `get_manual_scan_progress`, then `stop_manual_scan`.
 
 Note: multipart endpoints return "multipart upload is disabled" (403) if the
 server build or admin setting does not support them — that is expected on
-older v4.2.x deployments.
+older v4.2.x deployments (v4.2.4 and earlier).
 
 ## Safety controls
 

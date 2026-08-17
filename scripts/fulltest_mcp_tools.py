@@ -152,9 +152,9 @@ async def main() -> None:
     check("get_download_url", "http" in str(r), str(r)[:100])
     r = parse(await safe(tools["upload_file_multipart"], "upload_file_multipart", path=base,
                          file_name="big.bin", file_content_base64="YmlnIGRhdGE="))
-    check("upload_file_multipart graceful on v4.2.2", "unavailable" in str(r) or "HTML" in str(r), str(r)[:100])
+    check("upload_file_multipart on v4.2.5+", r.get("ok") is True, str(r)[:100])
     r = parse(await safe(tools["multipart_upload_status"], "multipart_upload_status", upload_id="nope"))
-    check("multipart_upload_status graceful", "unavailable" in str(r) or "HTML" in str(r) or "error" in str(r).lower(), str(r)[:100])
+    check("multipart_upload_status bad id (typed error)", "not found" in str(r).lower() or "error" in str(r).lower(), str(r)[:100])
     r = parse(await safe(tools["get_direct_upload_info"], "get_direct_upload_info",
                          path=base, file_name="a-renamed.txt", file_size=100))
     check("get_direct_upload_info (Local limitation)", "not implement" in str(r), str(r)[:100])

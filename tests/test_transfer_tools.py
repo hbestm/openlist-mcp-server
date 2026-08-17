@@ -70,7 +70,7 @@ async def test_upload_file_multipart_happy_path(transfer_tools) -> None:
             "file_size": 5,
             "chunk_size": 8 * 1024 * 1024,
             "overwrite": True,
-            "file_md5": None,
+            "file_md5": "5d41402abc4b2a76b9719d911017c592",  # md5("hello")
         },
         {"method": "chunk", "upload_id": "up-1", "index": 0, "size": 5},
         {"method": "complete", "upload_id": "up-1"},
@@ -146,6 +146,89 @@ async def test_upload_file_multipart_resume_skips_received_chunks(transfer_tools
     assert result["chunks_sent"] == 2  # 1 skipped + 1 uploaded
     indexes = [c["index"] for c in client.multipart_calls if c["method"] == "chunk"]
     assert indexes == [1]
+
+
+@pytest.mark.asyncio
+async def test_multipart_init_sends_file_md5_identity_proof(transfer_tools) -> None:
+    """Resume requires a hash proving the retry is the same file (post-v4.2.5)."""
+    import base64
+    import hashlib
+
+    tools, client = transfer_tools
+    data = b"identity proof payload"
+    await tools["upload_file_multipart"](
+        "/docs", "r.bin", base64.b64encode(data).decode(), chunk_size=1024 * 1024
+    )
+
+    inits = [c for c in client.multipart_calls if c["method"] == "init"]
+    assert inits and inits[0]["file_md5"] == hashlib.md5(data).hexdigest()
+
+
+@pytest.mark.asyncio
+@pytest.mark.asyncio
+async def test_multipart_uses_server_chunk_size_for_slicing(transfer_tools, monkeypatch) -> None:
+    """Slicing must follow the session chunk size from init, not the local one."""
+    import base64
+
+    tools, client = transfer_tools
+
+    class ServerClampedClient:
+        """Proxy whose init returns a clamped (larger) chunk size than requested."""
+
+        def __init__(self, fake) -> None:
+            self._fake = fake
+
+        def __getattr__(self, item):
+            return getattr(self._fake, item)
+
+        async def multipart_init(
+            self, file_path, file_size, chunk_size=None, overwrite=True, file_md5=None
+        ):
+            self._fake.multipart_calls.append(
+                {
+                    "method": "init",
+                    "file_path": file_path,
+                    "file_size": file_size,
+                    "chunk_size": chunk_size,
+                    "overwrite": overwrite,
+                    "file_md5": file_md5,
+                }
+            )
+            return {
+                "upload_id": "up-1",
+                "state": "uploading",
+                "path": file_path,
+                "size": file_size,
+                "chunk_size": 2 * 1024 * 1024,
+                "received": [],
+                "received_bytes": 0,
+            }  # server clamps to 2MiB
+
+        async def multipart_chunk(self, upload_id, index, chunk):
+            self._fake.multipart_calls.append(
+                {"method": "chunk", "index": index, "chunk_len": len(chunk)}
+            )
+
+        async def multipart_complete(self, upload_id):
+            return {"state": "completed"}
+
+    async def fake_get_client():
+        return ServerClampedClient(client)
+
+    monkeypatch.setattr("openlist_mcp.tools.transfer.get_client", fake_get_client)
+
+    # 4 MiB with a requested 1 MiB chunk but server-clamped 2 MiB -> 2 chunks
+    data = b"c" * (4 * 1024 * 1024)
+    result = json.loads(
+        await tools["upload_file_multipart"](
+            "/docs", "s.bin", base64.b64encode(data).decode(), chunk_size=1024 * 1024
+        )
+    )
+
+    assert result["ok"] is True
+    assert result["total_chunks"] == 2
+    chunks = [c for c in client.multipart_calls if c["method"] == "chunk"]
+    assert [c["chunk_len"] for c in chunks] == [2 * 1024 * 1024, 2 * 1024 * 1024]
 
 
 @pytest.mark.asyncio

@@ -6,6 +6,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.4.1] — 2026-08-16
+
+### Fixed
+- **Multipart resume never actually resumed against a live server**: OpenList
+  (post-v4.2.5) only lets a client resume an in-progress session when it can
+  prove the retry is the same file — it requires a matching `X-File-Md5`
+  (path+size alone is deliberately rejected). The tools never sent a hash, so
+  the server terminated the stale session and re-uploaded everything. The
+  uploader now always computes the payload MD5 (in-memory or streamed from
+  disk) and sends it on init; verified live that a retry reuses the same
+  `upload_id` and skips already-received chunks. (`transfer.py`)
+- **Chunk slicing now follows the server's session chunk size** returned by
+  init, instead of the locally-computed value, so slices stay aligned when the
+  server clamps or resumes an older session with a different chunk size. (`transfer.py`)
+
+### Changed
+- Live regression infrastructure (confined to `/test`, auto-cleanup) added
+  under `scripts/`: `fulltest_mcp_tools.py` (60 checks), `fulltest_stability.py`
+  (16), `fulltest_mcp_e2e.py` (22), `fulltest_safety_gates.py` (13),
+  `live_test_multipart.py` (9). Docs: `docs/live-testing.md`.
+- Multipart upload verified working end-to-end against a live **OpenList
+  v4.2.5** with `multipart_enabled=true` (25 MiB / 4 chunks, server-side size
+  and content-MD5 match, resume reuses the session). The earlier "requires
+  master after v4.2.5" note is superseded — v4.2.5 already ships the API.
+
 ## [0.4.0] — 2026-06-14
 
 ### Fixed
