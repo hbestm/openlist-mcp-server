@@ -116,8 +116,17 @@ async def main() -> None:
     except OpenListError as exc:
         check("status after abort (session gone)", "not found" in exc.message.lower() or exc.code in (404, 500), f"{exc.code} {exc.message[:80]}")
 
-    st2 = parse(await tools["multipart_upload_status"](path=f"{base}/small.txt", file_size=len(small)))
-    check("multipart_upload_status by path (complete session)", st2 is not None, str(st2)[:120])
+    # A completed session is gone server-side (path+size query then 404s), so
+    # validate path+size lookup against an in-progress session instead.
+    init3 = await c.multipart_init(file_path=f"{base}/query.bin", file_size=len(small),
+                                   chunk_size=1024, overwrite=True)
+    st2 = parse(await tools["multipart_upload_status"](path=f"{base}/query.bin", file_size=len(small)))
+    check("multipart_upload_status by path (in-progress session)",
+          st2 is not None and isinstance(st2, dict), str(st2)[:120])
+    try:
+        await c.multipart_abort(init3.get("upload_id", ""))
+    except Exception:  # noqa: BLE001
+        pass
 
     # ── cleanup ──────────────────────────────────────────────────────────
     await c.request("POST", "fs/remove", json={"dir": "/test", "names": [f"mcp-mp-{ts}"]})

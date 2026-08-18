@@ -224,7 +224,15 @@ async def main() -> None:
     check("find_duplicates (docs)", isinstance(r, dict), str(r)[:60])
 
     # ── output & cleanup ─────────────────────────────────────────────────
-    check("tool registry size", len(tools) == 87, f"{len(tools)} tools")
+    check("tool registry size", len(tools) == 107, f"{len(tools)} tools")
+
+    p1 = {"create_storage", "update_storage", "delete_storage", "enable_storage",
+          "disable_storage", "load_all_storages", "set_aria2", "set_qbittorrent",
+          "set_transmission", "set_115", "set_115_open", "set_123_pan",
+          "set_123_open", "set_pikpak", "set_thunder", "set_thunderx",
+          "set_thunder_browser", "set_guangyapan", "create_user", "update_user"}
+    missing_p1 = sorted(p1 - set(tools))
+    check("v0.5.0 P1 tools registered", not missing_p1, f"missing: {missing_p1}")
 
     r = parse(await safe(tools["remove"], "remove", directory="/test", names=[f"mcp-tools-{ts}"], confirm=True))
     check("cleanup base", ok(r.get("_text", ""), "deleted"), r.get("_text", "")[:70])

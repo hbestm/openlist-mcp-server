@@ -57,7 +57,7 @@ async def main() -> None:
         await session.initialize()
 
         tools = await session.list_tools()
-        check("87 tools over stdio", len(tools.tools) == 87, f"{len(tools.tools)}")
+        check("107 tools over stdio", len(tools.tools) == 107, f"{len(tools.tools)}")
 
         r = await call(session, "login")
         check("login", "successful" in text(r).lower() or "token" in text(r).lower(), text(r)[:60])
