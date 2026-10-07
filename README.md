@@ -8,6 +8,13 @@
   <a href="README.md">English</a> · <a href="README-zh.md">中文</a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/hbestm/openlist-mcp-server/releases/latest"><img src="https://img.shields.io/github/v/release/hbestm/openlist-mcp-server?sort=semver&label=release" alt="Latest release"></a>
+  <a href="https://github.com/hbestm/openlist-mcp-server/actions/workflows/ci.yml"><img src="https://github.com/hbestm/openlist-mcp-server/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/hbestm/openlist-mcp-server/blob/main/LICENSE"><img src="https://img.shields.io/github/license/hbestm/openlist-mcp-server" alt="License"></a>
+  <a href="https://github.com/hbestm/openlist-mcp-server/blob/main/pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python 3.10+"></a>
+</p>
+
 ---
 
 MCP Server for [OpenList](https://github.com/OpenListTeam/OpenList) — an open-source file management system (similar to Alist). Enables MCP-compatible AI agents to browse, upload, download, search, and manage files via the OpenList REST API.

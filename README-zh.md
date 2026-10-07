@@ -8,6 +8,13 @@
   <a href="README.md">English</a> · <a href="README-zh.md">中文</a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/hbestm/openlist-mcp-server/releases/latest"><img src="https://img.shields.io/github/v/release/hbestm/openlist-mcp-server?sort=semver&label=release" alt="最新版本"></a>
+  <a href="https://github.com/hbestm/openlist-mcp-server/actions/workflows/ci.yml"><img src="https://github.com/hbestm/openlist-mcp-server/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/hbestm/openlist-mcp-server/blob/main/LICENSE"><img src="https://img.shields.io/github/license/hbestm/openlist-mcp-server" alt="License"></a>
+  <a href="https://github.com/hbestm/openlist-mcp-server/blob/main/pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%2B-blue" alt="Python 3.10+"></a>
+</p>
+
 ---
 
 [OpenList](https://github.com/OpenListTeam/OpenList) 的 MCP 服务端。OpenList 是一个开源的文件管理系统（类似 Alist）。本服务让 MCP 协议兼容的 AI 智能体（Claude、SOLO 等）通过 OpenList REST API 浏览、上传、下载、搜索和管理文件。
