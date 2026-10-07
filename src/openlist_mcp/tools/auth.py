@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer as FastMCP
 
 from ..client import OpenList2FAError, OpenListError, _generate_totp, get_client
 from ..config import get_config

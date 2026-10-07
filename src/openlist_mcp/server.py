@@ -26,7 +26,7 @@ import os
 import sys
 from collections.abc import Callable
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer as FastMCP
 
 from . import __version__  # noqa: F401 — used in except ValueError branch
 from .config import get_config
