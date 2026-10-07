@@ -6,6 +6,153 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.6.0] — 2026-10-07
+
+### Added
+- **mcp 2.x support** — the SDK renamed `FastMCP` to `MCPServer` and moved it
+  from `mcp.server.fastmcp` to `mcp.server.mcpserver`. A single import shim
+  (`src/openlist_mcp/_compat.py`) now resolves whichever class the installed SDK
+  provides, so the server runs unchanged on mcp 1.x **and** mcp 2.x. The three
+  APIs this project uses (`FastMCP(name=…, instructions=…)`, the `@mcp.tool()`
+  decorator, and `mcp.run()`) keep their signatures across the rename.
+
+### Changed
+- Dependency range widened from `mcp>=1.0.0,<2.0.0` to `mcp>=1.0.0,<3.0.0`.
+  The previous upper bound was a workaround for the rename, not a real
+  incompatibility; it also meant fresh installs and upgrades could not pick up
+  any 2.x release. Verified against both **mcp 1.29.0** and **mcp 2.3.0**:
+  ruff, `ruff format --check`, mypy, all 172 unit tests, and a stdio
+  `initialize` → `tools/list` handshake reporting all 107 tools.
+- Merged upstream `main` (PR #4, "migrate FastMCP → MCPServer for mcp==2.0").
+  Upstream's version supported 2.x only; this merge keeps its 2.x support while
+  retaining 1.x compatibility.
+- mypy: `mcp.server.mcpserver` and `mcp.server.fastmcp` are declared
+  `ignore_missing_imports`, since exactly one of the pair is absent depending on
+  the installed SDK; `openlist_mcp._compat` opts out of unused-ignore reporting
+  for the same reason.
+
+### Notes
+- On mcp 2.x the client-side result models use snake_case (`server_info`,
+  `is_error`) where 1.x used camelCase (`serverInfo`, `isError`). Neither the
+  server nor the test suite reads those fields, so this affects only external
+  automation scripted against the client SDK.
+
+
+## [0.5.0] — 2026-08-16
+
+### Added
+- **Storage management (write)** (`admin.py`) — 6 new tools: `create_storage`,
+  `update_storage`, `delete_storage`, `enable_storage`, `disable_storage`,
+  `load_all_storages`. `update_storage` reads the current config first and only
+  applies the provided fields, so unspecified settings are preserved.
+  `create_storage` surfaces a readable note when the server persisted the
+  record but mounting failed (e.g. bad `root_folder_path`), pointing at
+  `update_storage`/`delete_storage` to fix or remove it.
+- **Offline-download client configuration** (`admin.py`) — 12 new tools:
+  `set_aria2`, `set_qbittorrent`, `set_transmission`, `set_115`,
+  `set_115_open`, `set_123_pan`, `set_123_open`, `set_pikpak`, `set_thunder`,
+  `set_thunderx`, `set_thunder_browser`, `set_guangyapan`. The server saves
+  these settings before probing the client, so a failed probe (e.g. aria2
+  offline) is reported as "configuration saved, but the client probe failed"
+  instead of a hard error that hides the persisted change.
+- **User management (write)** (`admin.py`) — 2 new tools: `create_user`
+  (rejects guest/admin roles client-side as the server does) and
+  `update_user` (read-then-merge; role cannot change via API).
+- Admin skill group grows 22 → 42 tools; total tool count 87 → **107**.
+  Tool counts in the startup banner are now derived at runtime.
+
+### Fixed
+- **`delete_setting` never deleted anything**: the server reads the key from
+  the query string (`c.Query("key")`), but the tool sent it in the JSON body,
+  so the key was always empty. Now sends `params={"key": key}`.
+
+### Changed
+- Update/create payloads for storage and user are built by read-then-merge so
+  partially specified updates cannot zero out untouched fields.
+
+## [0.4.1] — 2026-08-16
+
+### Fixed
+- **Multipart resume never actually resumed against a live server**: OpenList
+  (post-v4.2.5) only lets a client resume an in-progress session when it can
+  prove the retry is the same file — it requires a matching `X-File-Md5`
+  (path+size alone is deliberately rejected). The tools never sent a hash, so
+  the server terminated the stale session and re-uploaded everything. The
+  uploader now always computes the payload MD5 (in-memory or streamed from
+  disk) and sends it on init; verified live that a retry reuses the same
+  `upload_id` and skips already-received chunks. (`transfer.py`)
+- **Chunk slicing now follows the server's session chunk size** returned by
+  init, instead of the locally-computed value, so slices stay aligned when the
+  server clamps or resumes an older session with a different chunk size. (`transfer.py`)
+
+### Changed
+- Live regression infrastructure (confined to `/test`, auto-cleanup) added
+  under `scripts/`: `fulltest_mcp_tools.py` (60 checks), `fulltest_stability.py`
+  (16), `fulltest_mcp_e2e.py` (22), `fulltest_safety_gates.py` (13),
+  `live_test_multipart.py` (9). Docs: `docs/live-testing.md`.
+- Multipart upload verified working end-to-end against a live **OpenList
+  v4.2.5** with `multipart_enabled=true` (25 MiB / 4 chunks, server-side size
+  and content-MD5 match, resume reuses the session). The earlier "requires
+  master after v4.2.5" note is superseded — v4.2.5 already ships the API.
+
+## [0.4.0] — 2026-06-14
+
+### Fixed
+- **Share enable/disable/delete/cancel were broken against the real OpenList
+  API**: OpenList reads the share id from the query string
+  (`c.Query("id")` — verified in v4.2.2, v4.2.5, and master), but the tools
+  sent it in the JSON body, so every call failed with "sharing not found".
+  All four now send `params={"id": ...}`; tests for enable/disable/cancel
+  previously encoded the wrong contract and now assert the query string.
+  (`share.py`, `tests/test_share_tools.py`)
+- **Fresh installs crashed at import**: `mcp>=1.0.0` resolved to mcp 2.x,
+  which removed `mcp.server.fastmcp`. Dependency is now capped at
+  `mcp>=1.0.0,<2.0.0`. (`pyproject.toml`)
+- **`OPENLIST_ALLOWED_PATHS` allowlist bypass**: `tree`, `disk_usage`, and
+  `find_duplicates` traversed directories without checking the allowlist.
+  All three now call `enforce_path_allowed`. (`fs.py`, `advanced.py`)
+- **`delete_share` unit test was red**: The test asserting the query-param
+  contract was left stale by the v0.3.2 change; it now passes again.
+- **`_reject_internal_url` blocked the event loop**: synchronous
+  `socket.getaddrinfo` inside offline-download tools froze the MCP server
+  during DNS resolution. Now uses `asyncio.get_running_loop().getaddrinfo`.
+  (`advanced.py`)
+- **Startup banner printed a literal `{__version__}`**: the version line was
+  missing its `f` prefix. (`server.py`)
+- **`torrent_upload_parse` crashed on malformed base64**: now returns a
+  friendly error instead of raising `binascii.Error`. (`advanced.py`)
+- **Masked driver names in `list_drivers` docstring**: restored readable
+  examples (Local, S3, OneDrive, 115, 189PC, AliyunDrive, ...). (`admin.py`)
+
+### Added
+- **Resumable multipart upload support** (requires an OpenList build with the
+  multipart API — master after v4.2.5 — and the `multipart_enabled` setting):
+  - `upload_file_multipart` — base64 content via `/fs/multipart/*`.
+  - `multipart_upload_local_file` — stream local files from disk without
+    loading them into memory.
+  - `multipart_upload_status` — query progress by upload_id or path+size.
+  - `multipart_abort_upload` — discard an in-progress session (confirm-gated).
+  - Re-invoking an upload with the same path/name/size resumes the session;
+    already-received chunks are skipped via the server's `received` ranges.
+  (`client.py`, `transfer.py`)
+- **`get_direct_upload_info`** — client-side direct upload credentials for
+  storage backends that support direct upload (S3, etc.). (`transfer.py`)
+- **Manual scan administration**: `start_manual_scan`, `stop_manual_scan`,
+  `get_manual_scan_progress` — one-off scans of a storage mount. (`admin.py`)
+- **`move` task type** — previously missing from `TASK_TYPES`, so move tasks
+  could not be listed/managed. (`task.py`)
+
+### Changed
+- Tool count increased from 79 to **87** across all categories.
+- `upload_file` / `upload_local_file` now report a synchronous upload that
+  returns `{"value": null}` from OpenList as "uploaded successfully" instead
+  of "Upload task created". (`transfer.py`)
+- Banner and README tool counts are no longer hardcoded where feasible;
+  startup banner now reports dynamic counts.
+- `docs/api-compatibility.md` rewritten: corrected task list verb (GET, not
+  POST), documented the share query-string contract, the multipart API, the
+  move task type, direct upload, and manual-scan endpoints.
+
 ## [0.3.3] — 2026-06-10
 
 ### Fixed
@@ -370,6 +517,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.4.0 | 2026-06-14 | Share query-param fix, mcp<2 pin, multipart resumable upload, direct upload, manual scan, move tasks, allowlist gaps fixed |
 | 0.3.3 | 2026-06-10 | _list_items import fix, _human_size dedup, import httpx moved to top |
 | 0.3.2 | 2026-06-10 | Code audit fixes: enforce_writable gaps, delete_share params bug, mirror ordering, walker dedup |
 | 0.3.1 | 2026-06-06 | OPENLIST_SKILLS, skills module, CI, tests, upgrade notice, confirm ⚠️, 401 fix |

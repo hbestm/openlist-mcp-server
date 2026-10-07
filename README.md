@@ -32,7 +32,7 @@ MCP Server for [OpenList](https://github.com/OpenListTeam/OpenList) — an open-
 | **Torrent** | Parse `.torrent` files, generate torrents for existing files, rapid upload |
 | **Auth** | Auto JWT login with TOTP/2FA support, automatic re-authentication on expiry |
 
-**79 tools in total** — see the [Tools Reference](#tools-reference) below.
+**107 tools in total** — see the [Tools Reference](#tools-reference) below.
 
 ---
 
@@ -67,7 +67,7 @@ export OPENLIST_ALLOWED_PATHS="/mcp-dev-test,/public"     # Restrict to specific
 export OPENLIST_LOCAL_UPLOAD_ROOTS="/tmp:/path/to/uploads" # Enable local file uploads
 export OPENLIST_TOTP_SECRET="your_totp_secret"            # Auto-generate 2FA codes
 export OPENLIST_ALLOW_HTTP="false"                        # Allow HTTP (insecure, use only on LAN)
-export OPENLIST_SKILLS="core"                             # Tool groups: core(~25), default(~44), all(~79)
+export OPENLIST_SKILLS="core"                             # Tool groups: core(30), default(49), all(107)
 ```
 
 ### 3. Verify
@@ -163,7 +163,12 @@ Restart Claude Desktop, then try: *"List the files on my OpenList server."*
 |------|-------------|
 | `get_download_url` | Get direct/proxy download URL for a file. |
 | `upload_file` | Upload base64-encoded file content (max 100 MB). |
+| `upload_file_multipart` | Upload base64 content via the resumable multipart API (large files, resumable). Requires an OpenList build with the multipart API (master after v4.2.5). |
 | `upload_local_file` | Upload a local file path readable by the MCP server. Disabled by default; set `OPENLIST_LOCAL_UPLOAD_ROOTS` to enable. |
+| `multipart_upload_local_file` | Stream a local file to the server via the resumable multipart API without loading it into memory. |
+| `multipart_upload_status` | Query a multipart upload session's progress (by upload_id or path+size). |
+| `multipart_abort_upload` | Abort a multipart upload session and discard its chunks. Requires `confirm=true`. |
+| `get_direct_upload_info` | Get client-side direct upload credentials for storage backends that support it (S3, etc.). |
 
 ### Task Management
 
@@ -217,6 +222,9 @@ Restart Claude Desktop, then try: *"List the files on my OpenList server."*
 | `list_metas` | List all metadata configurations. |
 | `get_meta` | Get metadata details by ID. |
 | `reset_api_token` | Generate a new API token. Requires `confirm=true`. |
+| `start_manual_scan` | Start a one-off manual scan of a storage mount. Requires `confirm=true`. |
+| `stop_manual_scan` | Stop a running manual scan. Requires `confirm=true`. |
+| `get_manual_scan_progress` | Get the progress of the running/last manual scan. |
 | `list_my_ssh_keys` | List SSH public keys for the current user. |
 | `add_ssh_key` | Add a new SSH public key. Respects `OPENLIST_READONLY`. |
 | `delete_ssh_key` | Delete an SSH public key by ID. Requires `confirm=true`. |

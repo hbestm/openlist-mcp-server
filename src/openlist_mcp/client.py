@@ -355,6 +355,145 @@ class OpenListClient:
         result = data.get("data", {})
         return result if isinstance(result, dict) else {"value": result}
 
+    async def multipart_init(
+        self,
+        file_path: str,
+        file_size: int,
+        chunk_size: int | None = None,
+        overwrite: bool = True,
+        file_md5: str | None = None,
+    ) -> dict[str, Any]:
+        """Start (or resume) a resumable multipart upload session.
+
+        Requires an OpenList build with the ``/fs/multipart`` API (post-v4.2.5
+        master) and the ``multipart_enabled`` admin setting turned on.
+        """
+        await self.ensure_authenticated()
+        client = await self._get_client()
+
+        headers = {
+            "Authorization": self._token or "",
+            "File-Path": file_path,
+            "X-File-Size": str(file_size),
+        }
+        if chunk_size and chunk_size > 0:
+            headers["X-Chunk-Size"] = str(chunk_size)
+        if not overwrite:
+            headers["Overwrite"] = "false"
+        if file_md5:
+            headers["X-File-Md5"] = file_md5
+
+        try:
+            resp = await client.post("/fs/multipart/init", headers=headers)
+        except httpx.HTTPError as exc:
+            raise OpenListError(f"Multipart init request failed: {exc}", code=503) from exc
+
+        data = self._parse_response(resp, "Multipart init")
+        if data.get("code") != 200:
+            raise OpenListError(
+                data.get("message", "Multipart init failed"), code=data.get("code", 500)
+            )
+        result = data.get("data", {})
+        return result if isinstance(result, dict) else {}
+
+    async def multipart_chunk(self, upload_id: str, index: int, chunk: bytes) -> dict[str, Any]:
+        """Upload one chunk of a multipart session.
+
+        Chunks are idempotent; ``index`` is zero-based. Only the session owner
+        may send chunks.
+        """
+        await self.ensure_authenticated()
+        client = await self._get_client()
+        try:
+            resp = await client.put(
+                "/fs/multipart/chunk",
+                content=chunk,
+                headers={
+                    "Authorization": self._token or "",
+                    "X-Upload-Id": upload_id,
+                    "X-Chunk-Index": str(index),
+                    "Content-Type": "application/octet-stream",
+                },
+            )
+        except httpx.HTTPError as exc:
+            raise OpenListError(f"Multipart chunk request failed: {exc}", code=503) from exc
+
+        data = self._parse_response(resp, f"Multipart chunk {index}")
+        if data.get("code") != 200:
+            raise OpenListError(
+                data.get("message", f"Multipart chunk {index} failed"),
+                code=data.get("code", 500),
+            )
+        result = data.get("data", {})
+        return result if isinstance(result, dict) else {}
+
+    async def multipart_complete(self, upload_id: str) -> dict[str, Any]:
+        """Finalize a multipart upload session and persist the file."""
+        await self.ensure_authenticated()
+        client = await self._get_client()
+        try:
+            resp = await client.post(
+                "/fs/multipart/complete",
+                headers={"Authorization": self._token or "", "X-Upload-Id": upload_id},
+            )
+        except httpx.HTTPError as exc:
+            raise OpenListError(f"Multipart complete request failed: {exc}", code=503) from exc
+
+        data = self._parse_response(resp, "Multipart complete")
+        if data.get("code") != 200:
+            raise OpenListError(
+                data.get("message", "Multipart complete failed"), code=data.get("code", 500)
+            )
+        result = data.get("data", {})
+        return result if isinstance(result, dict) else {}
+
+    async def multipart_status(
+        self, upload_id: str = "", path: str = "", file_size: int = 0
+    ) -> dict[str, Any]:
+        """Query a multipart session by upload_id, or by path+size."""
+        await self.ensure_authenticated()
+        client = await self._get_client()
+        params: dict[str, Any] = {}
+        if upload_id:
+            params["upload_id"] = upload_id
+        elif path and file_size > 0:
+            params["path"] = path
+            params["size"] = file_size
+        else:
+            raise ValueError("multipart_status requires upload_id, or path and file_size")
+        try:
+            resp = await client.get("/fs/multipart/status", params=params, headers=self._headers)
+        except httpx.HTTPError as exc:
+            raise OpenListError(f"Multipart status request failed: {exc}", code=503) from exc
+
+        data = self._parse_response(resp, "Multipart status")
+        if data.get("code") != 200:
+            raise OpenListError(
+                data.get("message", "Multipart status failed"), code=data.get("code", 500)
+            )
+        result = data.get("data", {})
+        return result if isinstance(result, dict) else {}
+
+    async def multipart_abort(self, upload_id: str) -> dict[str, Any]:
+        """Abort a multipart upload session and discard its chunks."""
+        await self.ensure_authenticated()
+        client = await self._get_client()
+        try:
+            resp = await client.post(
+                "/fs/multipart/abort",
+                headers={"Authorization": self._token or "", "X-Upload-Id": upload_id},
+            )
+        except httpx.HTTPError as exc:
+            raise OpenListError(f"Multipart abort request failed: {exc}", code=503) from exc
+
+        data = self._parse_response(resp, "Multipart abort")
+        if data.get("code") != 200:
+            raise OpenListError(
+                data.get("message", "Multipart abort failed"), code=data.get("code", 500)
+            )
+        result = data.get("data", {})
+        return result if isinstance(result, dict) else {}
+
     def clear_token(self) -> None:
         """Clear the cached authentication token."""
         self._token = None

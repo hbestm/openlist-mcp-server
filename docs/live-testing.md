@@ -62,6 +62,33 @@ PYTHONPATH=src python scripts/check_task_api.py
 The script creates a folder named `mcp-test-<timestamp>` under `OPENLIST_TEST_DIR`
 and attempts to delete it during cleanup.
 
+## Manual live checks for the v0.4.0 fixes
+
+When testing against a real OpenList instance, verify these behaviors that the
+unit tests can only approximate:
+
+1. **Share enable/disable/delete** — create a share, then run
+   `enable_share` / `disable_share` / `delete_share` with the returned id.
+   These must not return "sharing not found" (they send `?id=` as a query
+   parameter now).
+2. **Share list/get** — `list_shares` then `get_share_info(share_id)`.
+3. **`move` task type** — after a `move` operation, `list_tasks(task_type="move")`
+   must succeed (previously rejected as unsupported).
+4. **Multipart upload** (OpenList **v4.2.5+** with the `multipart_enabled`
+   admin setting turned on): `upload_file_multipart` on a small file and on a
+   multi-chunk file (>1 MiB). To verify resume, interrupt a session and re-run
+   the same upload — the tool sends the payload MD5 (`X-File-Md5`) as the
+   identity proof, so the server reuses the same session and skips
+   already-received chunks; check the second run reports the same `upload_id`.
+   `multipart_upload_status` on a live session returns the received ranges and
+   `multipart_abort_upload` discards it.
+5. **Manual scan** (admin account): `start_manual_scan` on a storage mount,
+   `get_manual_scan_progress`, then `stop_manual_scan`.
+
+Note: multipart endpoints return "multipart upload is disabled" (403) if the
+server build or admin setting does not support them — that is expected on
+older v4.2.x deployments (v4.2.4 and earlier).
+
 ## Safety controls
 
 The MCP server supports these environment-level safety controls:
@@ -72,3 +99,37 @@ The MCP server supports these environment-level safety controls:
 
 Do not use production admin credentials for routine live testing. Use a test account
 with the minimum OpenList permissions required for the scenario.
+
+## Automated live-regression scripts (v0.4.0)
+
+The repository ships ready-to-run live suites that drive the *real* MCP tool
+functions (and, for the e2e script, the actual stdio server) against a live
+OpenList. All writes are confined to a timestamped subtree under `/test`
+(or any mount you point the scripts at) and removed afterwards; global admin
+destructives (index build/clear, `reset_api_token`, `clear_*` on other users'
+data, `save_settings`) are deliberately not executed.
+
+```bash
+export OPENLIST_URL=http://host:5244 OPENLIST_USERNAME=admin \
+       OPENLIST_PASSWORD=... OPENLIST_ALLOW_HTTP=true
+python scripts/fulltest_mcp_tools.py     # 60 checks — every tool group, real payloads
+python scripts/fulltest_stability.py     # 16 checks — repeats, concurrency, bad inputs, re-auth
+python scripts/fulltest_mcp_e2e.py       # 22 checks — full MCP protocol over stdio
+python scripts/live_test_multipart.py    # 9 checks — resumable multipart upload (v4.2.5+)
+python scripts/live_test_p1_admin.py     # 21 checks — storage CRUD, driver configs, user write
+# safety gates (subprocess envs):
+OPENLIST_READONLY=true TEST_MODE=readonly python scripts/fulltest_safety_gates.py
+OPENLIST_ALLOWED_PATHS=/test TEST_MODE=allowed_paths python scripts/fulltest_safety_gates.py
+```
+
+Reference results on OpenList v4.2.5 (cc87e88): 60/60, 16/16, 22/22, 13/13,
+9/9 (multipart) and 21/21 (P1 admin) — all green.
+
+`live_test_p1_admin.py` exercises the v0.5.0 admin-write tools with fully
+reversible changes: it creates a temporary `Local` storage mounted on
+`/mcp-p1-*` (root `/tmp`), exercises update/disable/enable/delete, writes an
+aria2 config and restores it (the server keeps built-in setting keys, so
+"restore" writes the previous values back), and creates/updates/removes a
+throwaway user. It cleans up after itself; a failed probe (e.g. aria2
+offline) is expected and reported as "configuration saved, but the client
+probe failed".

@@ -5,33 +5,31 @@ Includes offline download, archive decompression, and related utilities.
 
 from __future__ import annotations
 
+import asyncio
 import base64
+import binascii
 import contextlib
 import ipaddress
 import json
 import os
 import posixpath
-import socket
 from typing import Any
 from urllib.parse import urlparse
 
-from mcp.server.mcpserver import MCPServer as FastMCP
-
-from ..client import OpenListError, get_client
-from ..config import get_config
 import httpx
+
+from .._compat import FastMCP
+from ..client import get_client
+from ..config import get_config
 from . import (
+    _human_size,
+    _list_items,
     enforce_path_allowed,
     enforce_writable,
     normalize_names,
     validate_name,
     validate_path,
-    _human_size,
-    _list_items,
 )
-
-
-
 
 # Internal IP ranges that should be blocked for SSRF prevention.
 _PRIVATE_NETWORKS = [
@@ -58,11 +56,12 @@ def _is_private_ip(ip_str: str) -> bool:
     return any(addr in network for network in _PRIVATE_NETWORKS)
 
 
-def _reject_internal_url(url: str) -> None:
+async def _reject_internal_url(url: str) -> None:
     """Reject URLs that resolve to internal/private IP addresses (SSRF prevention).
 
     Resolves the hostname to IP address(es) and raises ValueError if any
-    resolved IP is in a private or loopback range.
+    resolved IP is in a private or loopback range. DNS resolution runs in the
+    event loop's executor so it never blocks the MCP server.
     """
     parsed = urlparse(url)
     host = parsed.hostname
@@ -83,9 +82,9 @@ def _reject_internal_url(url: str) -> None:
         # Not a bare IP — resolve the hostname
         pass
 
-    # DNS resolution for hostnames
+    # DNS resolution for hostnames (async — runs in the default executor)
     try:
-        addrinfo = socket.getaddrinfo(host, None)
+        addrinfo = await asyncio.get_running_loop().getaddrinfo(host, None)
     except OSError as exc:
         raise ValueError(
             f"Cannot resolve hostname '{host}' for SSRF check: {exc}. "
@@ -215,7 +214,7 @@ def register_advanced_tools(mcp: FastMCP) -> None:
         # SSRF prevention: reject URLs pointing to internal/private networks
         # Magnet links have no hostname and can't be used for SSRF, skip check
         if parsed.scheme != "magnet":
-            _reject_internal_url(url)
+            await _reject_internal_url(url)
 
         client = await get_client()
         body: dict[str, Any] = {"urls": [url], "path": path}
@@ -263,7 +262,7 @@ def register_advanced_tools(mcp: FastMCP) -> None:
                     "Only http, https, magnet, ftp, and sftp URLs are allowed."
                 )
             if parsed.scheme != "magnet":
-                _reject_internal_url(url)
+                await _reject_internal_url(url)
 
         client = await get_client()
         results = []
@@ -300,6 +299,7 @@ def register_advanced_tools(mcp: FastMCP) -> None:
         Returns:
             JSON string with grouped potential duplicates.
         """
+        enforce_path_allowed(path)
         client = await get_client()
         groups: dict[str, list[dict]] = {}
         seen = set()
@@ -669,7 +669,19 @@ def register_advanced_tools(mcp: FastMCP) -> None:
         """
 
         client = await get_client()
-        raw_bytes = base64.b64decode(torrent_data)
+        try:
+            raw_bytes = base64.b64decode(torrent_data, validate=True)
+        except (ValueError, binascii.Error):
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": (
+                        "Failed to decode torrent_data as base64. "
+                        "Provide the .torrent file content base64-encoded."
+                    ),
+                },
+                ensure_ascii=False,
+            )
         data = await client.multipart_form(
             "fs/torrent/upload_parse",
             field_name="torrent",

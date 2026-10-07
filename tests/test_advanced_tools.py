@@ -115,3 +115,17 @@ async def test_torrent_upload_parse_sends_multipart(advanced_tools) -> None:
     ]
     assert '"info_hash"' in result
     assert '"torrent_data"' in result
+
+
+@pytest.mark.asyncio
+async def test_find_duplicates_respects_allowed_paths(advanced_tools, monkeypatch) -> None:
+    tools, client = advanced_tools
+    monkeypatch.setenv("OPENLIST_ALLOWED_PATHS", "/safe")
+    monkeypatch.setenv("OPENLIST_USERNAME", "admin")
+    monkeypatch.setenv("OPENLIST_PASSWORD", "secret")
+    monkeypatch.setattr("openlist_mcp.config._config", None)
+
+    with pytest.raises(PermissionError, match="outside OPENLIST_ALLOWED_PATHS"):
+        await tools["find_duplicates"]("/private")
+
+    assert client.requests == []

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from openlist_mcp.client import OpenListError
 from openlist_mcp.tools.advanced import register_advanced_tools
 from openlist_mcp.tools.fs import register_fs_tools
 from openlist_mcp.tools.task import register_task_tools
@@ -28,6 +29,9 @@ class FakeClient:
     def __init__(self) -> None:
         self.requests = []
         self.uploads = []
+        self.multipart_calls = []
+        self.fail_chunk_index: int | None = None
+        self.resume_received: list | None = None
 
     async def request(self, method: str, path: str, **kwargs):
         self.requests.append((method, path, kwargs))
@@ -70,6 +74,66 @@ class FakeClient:
 
     async def upload(self, **kwargs):
         self.uploads.append(kwargs)
+        return {}
+
+    # Resumable multipart upload simulation -----------------------------------
+
+    async def multipart_init(
+        self,
+        file_path: str,
+        file_size: int,
+        chunk_size: int | None = None,
+        overwrite: bool = True,
+        file_md5: str | None = None,
+    ) -> dict:
+        self.multipart_calls.append(
+            {
+                "method": "init",
+                "file_path": file_path,
+                "file_size": file_size,
+                "chunk_size": chunk_size,
+                "overwrite": overwrite,
+                "file_md5": file_md5,
+            }
+        )
+        init = {
+            "upload_id": "up-1",
+            "state": "uploading",
+            "path": file_path,
+            "size": file_size,
+            "chunk_size": chunk_size or 8 * 1024 * 1024,
+            "received": [],
+            "received_bytes": 0,
+        }
+        if self.resume_received is not None:
+            init["received"] = self.resume_received
+            init["resumed"] = True
+        return init
+
+    async def multipart_chunk(self, upload_id: str, index: int, chunk: bytes) -> dict:
+        self.multipart_calls.append(
+            {"method": "chunk", "upload_id": upload_id, "index": index, "size": len(chunk)}
+        )
+        if self.fail_chunk_index is not None and index == self.fail_chunk_index:
+            raise OpenListError(f"chunk {index} rejected", code=500)
+        return {"upload_id": upload_id, "index": index, "received_bytes": len(chunk)}
+
+    async def multipart_complete(self, upload_id: str) -> dict:
+        self.multipart_calls.append({"method": "complete", "upload_id": upload_id})
+        return {"upload_id": upload_id, "state": "done"}
+
+    async def multipart_status(
+        self, upload_id: str = "", path: str = "", file_size: int = 0
+    ) -> dict:
+        self.multipart_calls.append(
+            {"method": "status", "upload_id": upload_id, "path": path, "file_size": file_size}
+        )
+        if self.resume_received is not None:
+            return {"upload_id": upload_id, "received": self.resume_received}
+        return {"upload_id": upload_id, "received": []}
+
+    async def multipart_abort(self, upload_id: str) -> dict:
+        self.multipart_calls.append({"method": "abort", "upload_id": upload_id})
         return {}
 
 
