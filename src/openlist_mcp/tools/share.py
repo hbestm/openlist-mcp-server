@@ -4,8 +4,7 @@ from __future__ import annotations
 
 import json
 
-from mcp.server.fastmcp import FastMCP
-
+from .._compat import FastMCP
 from ..client import get_client
 from . import enforce_path_allowed, enforce_writable, validate_pagination
 

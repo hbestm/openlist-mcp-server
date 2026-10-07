@@ -17,8 +17,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 import httpx
-from mcp.server.fastmcp import FastMCP
 
+from .._compat import FastMCP
 from ..client import get_client
 from ..config import get_config
 from . import (

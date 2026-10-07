@@ -26,9 +26,8 @@ import os
 import sys
 from collections.abc import Callable
 
-from mcp.server.fastmcp import FastMCP
-
 from . import __version__  # noqa: F401 — used in except ValueError branch
+from ._compat import FastMCP
 from .config import get_config
 from .skills import (
     ALWAYS_LOADED,

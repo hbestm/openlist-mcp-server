@@ -6,8 +6,7 @@ import asyncio
 import json
 import logging
 
-from mcp.server.fastmcp import FastMCP
-
+from .._compat import FastMCP
 from ..client import get_client
 from . import enforce_writable, validate_pagination
 

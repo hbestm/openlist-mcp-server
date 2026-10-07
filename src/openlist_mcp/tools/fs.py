@@ -5,8 +5,7 @@ from __future__ import annotations
 import json
 import posixpath
 
-from mcp.server.fastmcp import FastMCP
-
+from .._compat import FastMCP
 from ..client import OpenListError, get_client
 from . import (
     _human_size,

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "openlist-mcp-server"
-version = "0.5.0"
+version = "0.6.0"
 description = "MCP Server for OpenList - enables AI agents to manage files via OpenList API"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,7 +13,7 @@ authors = [
     { name = "OpenList MCP Contributors" }
 ]
 dependencies = [
-    "mcp>=1.0.0,<2.0.0",
+    "mcp>=1.0.0,<3.0.0",
     "httpx>=0.27.0",
     "pyotp>=2.9.0",
 ]
@@ -80,6 +80,21 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = false
 strict_equality = true
+
+# mcp 2.0 renamed FastMCP to MCPServer and moved it from mcp.server.fastmcp to
+# mcp.server.mcpserver. openlist_mcp._compat resolves whichever the installed
+# version provides, so exactly one of the two is always absent — mypy must
+# tolerate either depending on the environment it type-checks.
+[[tool.mypy.overrides]]
+module = ["mcp.server.mcpserver", "mcp.server.fastmcp"]
+ignore_missing_imports = true
+
+# The shim's fallback import redefines FastMCP under mcp 2.x, and under mcp 1.x
+# the ignore comment on it guards nothing — so this one module opts out of
+# unused-ignore reporting instead of weakening the setting repo-wide.
+[[tool.mypy.overrides]]
+module = ["openlist_mcp._compat"]
+warn_unused_ignores = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

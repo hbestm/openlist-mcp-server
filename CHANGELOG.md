@@ -6,6 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.6.0] — 2026-10-07
+
+### Added
+- **mcp 2.x support** — the SDK renamed `FastMCP` to `MCPServer` and moved it
+  from `mcp.server.fastmcp` to `mcp.server.mcpserver`. A single import shim
+  (`src/openlist_mcp/_compat.py`) now resolves whichever class the installed SDK
+  provides, so the server runs unchanged on mcp 1.x **and** mcp 2.x. The three
+  APIs this project uses (`FastMCP(name=…, instructions=…)`, the `@mcp.tool()`
+  decorator, and `mcp.run()`) keep their signatures across the rename.
+
+### Changed
+- Dependency range widened from `mcp>=1.0.0,<2.0.0` to `mcp>=1.0.0,<3.0.0`.
+  The previous upper bound was a workaround for the rename, not a real
+  incompatibility; it also meant fresh installs and upgrades could not pick up
+  any 2.x release. Verified against both **mcp 1.29.0** and **mcp 2.3.0**:
+  ruff, `ruff format --check`, mypy, all 172 unit tests, and a stdio
+  `initialize` → `tools/list` handshake reporting all 107 tools.
+- Merged upstream `main` (PR #4, "migrate FastMCP → MCPServer for mcp==2.0").
+  Upstream's version supported 2.x only; this merge keeps its 2.x support while
+  retaining 1.x compatibility.
+- mypy: `mcp.server.mcpserver` and `mcp.server.fastmcp` are declared
+  `ignore_missing_imports`, since exactly one of the pair is absent depending on
+  the installed SDK; `openlist_mcp._compat` opts out of unused-ignore reporting
+  for the same reason.
+
+### Notes
+- On mcp 2.x the client-side result models use snake_case (`server_info`,
+  `is_error`) where 1.x used camelCase (`serverInfo`, `isError`). Neither the
+  server nor the test suite reads those fields, so this affects only external
+  automation scripted against the client SDK.
+
+
 ## [0.5.0] — 2026-08-16
 
 ### Added
