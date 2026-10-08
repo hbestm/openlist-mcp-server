@@ -114,17 +114,16 @@ def test_stated_counts_match_the_registry() -> None:
 # ─────────────────────── version history ─────────────────────────
 
 
-def test_changelog_sections_and_version_table_agree() -> None:
+def test_version_history_table_covers_every_section() -> None:
+    """Independent of the generator: every version listed once, in the same order."""
     text = _read("CHANGELOG.md")
-    sections = set(re.findall(r"^## \[([0-9][^\]]*)\]", text, re.M))
-    table = set(
-        re.findall(r"^\|\s*([0-9][0-9.]*)\s*\|", text.split("## Version history", 1)[1], re.M)
-    )
+    sections = re.findall(r"^## \[([0-9][^\]]*)\]", text, re.M)
+    rows = re.findall(r"^\|\s*([0-9][0-9.]*)\s*\|", text.split("## Version history", 1)[1], re.M)
 
-    assert sections == table, (
-        f"only in a section: {sorted(sections - table)}; "
-        f"only in the table: {sorted(table - sections)}"
-    )
+    missing = [v for v in sections if v not in rows]
+    extra = [v for v in rows if v not in sections]
+    assert not missing and not extra, f"missing from the table: {missing}; not in the file: {extra}"
+    assert rows == sections, "the table is not in the same order as the sections"
 
 
 def test_the_package_version_has_a_changelog_entry() -> None:
@@ -146,4 +145,23 @@ def test_changelog_dates_run_newest_first() -> None:
     assert dates == sorted(dates, reverse=True), (
         "CHANGELOG dates are not in descending order: "
         + ", ".join(f"{a}>{b}" for a, b in zip(dates, dates[1:], strict=False) if a < b)
+    )
+
+
+# ─────────────────────── release tooling ─────────────────────────
+
+
+def test_release_script_points_at_this_repository() -> None:
+    """`scripts/release.py` names the GitHub repository; keep that name honest."""
+    spec = importlib.util.spec_from_file_location("release", ROOT / "scripts" / "release.py")
+    assert spec and spec.loader
+    release = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(release)
+
+    declared = re.search(
+        r'^Repository = "https://github\.com/([^"]+)"', _read("pyproject.toml"), re.M
+    )
+    assert declared, "pyproject.toml has no Repository URL"
+    assert declared.group(1) == release.REPO, (
+        f"release.py targets {release.REPO}, the project declares {declared.group(1)}"
     )

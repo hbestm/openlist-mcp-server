@@ -569,28 +569,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version history
 
+<!-- BEGIN GENERATED: changelog-table -->
 | Version | Date | Highlights |
 |---------|------|------------|
-| 0.7.1 | 2026-10-08 | Documentation only: README tool tables completed (87 → 110), the superseded "master after v4.2.5" multipart claim corrected |
-| 0.7.0 | 2026-10-08 | Directory metadata write (`create_meta` / `update_meta` / `delete_meta`); 110 tools |
-| 0.6.0 | 2026-10-07 | Dual mcp support (1.x and 2.x) via `_compat` import shim, `mcp` range widened to `<3.0.0`, upstream mcp 2.0 migration merged |
-| 0.5.0 | 2026-08-16 | 107 tools: admin write for storages, offline-download clients and users; `delete_setting` query-param fix; runtime-derived banner counts |
-| 0.4.1 | 2026-08-16 | Multipart resume via `X-File-Md5` identity proof, server-driven chunk slicing, live regression suites |
-| 0.4.0 | 2026-06-14 | Share query-param fix, mcp<2 pin, multipart resumable upload, direct upload, manual scan, move tasks, allowlist gaps fixed |
-| 0.3.3 | 2026-06-10 | _list_items import fix, _human_size dedup, import httpx moved to top |
-| 0.3.2 | 2026-06-10 | Code audit fixes: enforce_writable gaps, delete_share params bug, mirror ordering, walker dedup |
-| 0.3.1 | 2026-06-06 | OPENLIST_SKILLS, skills module, CI, tests, upgrade notice, confirm ⚠️, 401 fix |
-| 0.2.12 | 2026-06-04 | SQLITE_BUSY retry, SSRF fix for magnet/ftp/sftp |
-| 0.2.11 | 2026-06-04 | 79 tools: admin index/setting/user/meta/token tools |
-| 0.2.10 | 2026-06-01 | 67 tools: batch ops, tree/disk_usage, mirror, admin read-only tools, torrent tools |
-| 0.2.9 | 2026-06-01 | get_archive_meta, torrent_upload_parse, list_tasks(all), multipart_form() client helper |
-| 0.2.8 | 2026-05-31 | Batch task ops, tree/disk_usage/find_duplicates/content_preview/mirror, read-only admin, torrent + SSH-key tools |
-| 0.2.7 | 2026-05-30 | Auto TOTP, list_download_tools, validate_path fix |
-| 0.2.6 | 2026-05-30 | offline_download, decompress_archive, get_me, logout, recursive_move |
-| 0.2.5 | 2026-05-29 | 2FA/TOTP, upload_local_file, streaming uploads, release workflow |
-| 0.2.4 | 2026-05-28 | 2FA login support, HTTP warning |
-| 0.2.3 | 2026-05-27 | upload_local_file, READONLY, ALLOWED_PATHS |
-| 0.2.2 | 2026-05-26 | Version sync and doc fixes |
-| 0.2.1 | 2026-05-26 | .env support, doc overhaul |
-| 0.2.0 | 2026-05-25 | Safety controls, file/task/share management tools |
+| 0.7.1 | 2026-10-08 | The tool tables were incomplete |
+| 0.7.0 | 2026-10-08 | Directory metadata (write) (admin.py) — 3 new tools: create_meta, |
+| 0.6.0 | 2026-10-07 | mcp 2.x support — the SDK renamed FastMCP to MCPServer and moved it |
+| 0.5.0 | 2026-08-16 | Storage management (write) (admin.py) — 6 new tools: create_storage, |
+| 0.4.1 | 2026-08-16 | Multipart resume never actually resumed against a live server: OpenList |
+| 0.4.0 | 2026-06-14 | Share enable/disable/delete/cancel were broken against the real OpenList |
+| 0.3.3 | 2026-06-10 | _list_items missing import causes NameError: fs.py and advanced.py |
+| 0.3.2 | 2026-06-10 | update_current_user bypasses OPENLIST_READONLY: When the server is |
+| 0.3.1 | 2026-06-06 | OPENLIST_SKILLS environment variable: Select which tool groups to load |
+| 0.2.12 | 2026-06-04 | SQLITE_BUSY auto-retry: OpenListClient.request() now retries up to 3 |
+| 0.2.11 | 2026-06-04 | Admin search index management: build_search_index, update_search_index, |
+| 0.2.10 | 2026-06-01 | list_tasks now uses GET instead of POST for OpenList v4.2.2 compatibility |
+| 0.2.9 | 2026-06-01 | get_archive_meta — get archive metadata (format, encryption, comment, file tree) without extracting |
+| 0.2.8 | 2026-05-31 | batch_cancel_tasks, batch_delete_tasks, batch_retry_tasks — batch task operations |
+| 0.2.7 | 2026-05-30 | list_download_tools tool — query available offline download tools (aria2, Transmission, |
+| 0.2.6 | 2026-05-30 | tools/advanced.py module with: |
+| 0.2.5 | 2026-05-29 | 2FA/TOTP support: login() tool accepts optional otp_code parameter for |
+| 0.2.4 | 2026-05-28 | 2FA / TOTP login support: login() tool now accepts an optional otp_code parameter |
+| 0.2.3 | 2026-05-27 | upload_local_file tool (gated behind OPENLIST_LOCAL_UPLOAD_ROOTS) |
+| 0.2.2 | 2026-05-26 | Version synchronization: all version strings (pyproject.toml, source, READMEs) now match |
+| 0.2.1 | 2026-05-26 | .env file support (via optional python-dotenv dependency) |
+| 0.2.0 | 2026-05-25 | MCP safety controls: OPENLIST_READONLY, OPENLIST_ALLOWED_PATHS |
 | 0.1.0 | 2026-05-24 | Initial release |
+<!-- END GENERATED: changelog-table -->

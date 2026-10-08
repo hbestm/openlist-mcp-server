@@ -115,6 +115,36 @@ python scripts/live_integration.py
 
 `pre-commit` 已配置：改动 `skills.py` 或 `tools/` 时会自动重跑生成器。
 
+## 发布新版本
+
+**先写 CHANGELOG，再发版。** 发布说明直接取自它，脚本会拒绝发布一个 CHANGELOG 里不存在的版本。
+
+1. 在 `CHANGELOG.md` 顶部加一节：
+
+   ```markdown
+   ## [0.8.0] — 2026-10-10
+
+   ### Added
+   - 一句话说清这次改了什么。
+   ```
+
+   版本历史表**不用管** —— 它由生成器从这一节派生。
+
+2. 跑发布脚本：
+
+   ```bash
+   python scripts/release.py 0.8.0 --yes --token-file ../.gh_token
+   ```
+
+   它会依次：升 `pyproject.toml` → 重新生成文档 → 跑门禁（红就停）→ 提交并推 `main` → **单独**推这一个 tag → 等 Release 工作流完成 → 用 CHANGELOG 内容替换自动生成的发布说明 → 校验 whl 与 sdist 都已挂上。
+
+   不加 `--yes` 时只打印计划，不改动任何东西；`--token-file` 省略则跳过需要 GitHub API 的那两步。
+
+**两个手工发布时踩过的坑，脚本已替你避开：**
+
+- 一次推多个 tag（`git push origin v1 v2`）**不会**触发 Release 工作流 —— 必须单个推。
+- 工作流自动生成的发布说明只列已合并的 PR；直接推到 `main` 的提交会让说明与本次改动毫无关系。
+
 ## 许可证
 
 通过提交贡献，您同意您的代码将在 MIT 许可证下发布。

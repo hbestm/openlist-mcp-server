@@ -162,11 +162,55 @@ def render_tool_groups() -> str:
     return "\n".join(lines) + "\n"
 
 
+# The version history table is a summary, so its cell is the first line of the
+# version's first changelog bullet, cut at the first sentence.
+_HIGHLIGHT_LIMIT = 110
+
+_SECTION = re.compile(
+    r"^## \[([0-9][^\]]*)\]\s*—\s*(\d{4}-\d{2}-\d{2})\n(.*?)(?=^## \[|\Z)",
+    re.M | re.S,
+)
+
+
+def _first_highlight(body: str) -> str:
+    """One line summarising a version, taken from the section it belongs to."""
+    bullet = next((line.strip() for line in body.splitlines() if line.strip().startswith("- ")), "")
+    text = re.sub(r"[`*]", "", bullet[2:].strip()) if bullet else ""
+    if not text:
+        text = next(
+            (
+                line.strip()
+                for line in body.splitlines()
+                if line.strip() and not line.startswith("#")
+            ),
+            "(no summary)",
+        )
+    text = re.sub(r"\s+", " ", text)
+    first = re.split(r"(?<=[.。])\s", text)[0].rstrip(".")
+    return first if len(first) <= _HIGHLIGHT_LIMIT else first[: _HIGHLIGHT_LIMIT - 3].rstrip() + "…"
+
+
+def render_changelog_table() -> str:
+    """The version history table, derived from the sections above it.
+
+    Kept generated because it used to be maintained by hand at the bottom of a
+    500-line file, and fell five versions behind before anyone noticed.
+    """
+    text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    entries = _SECTION.findall(text)
+    lines = ["| Version | Date | Highlights |", "|---------|------|------------|"]
+    lines += [
+        f"| {version} | {date} | {_first_highlight(body)} |" for version, date, body in entries
+    ]
+    return "\n".join(lines) + "\n"
+
+
 # file -> (marker name, renderer)
 BLOCKS = {
     "README.md": ("tools", lambda d: render_tools(d, zh=False)),
     "README-zh.md": ("tools", lambda d: render_tools(d, zh=True)),
     "AI_GUIDE.md": ("tool-groups", lambda d: render_tool_groups()),
+    "CHANGELOG.md": ("changelog-table", lambda d: render_changelog_table()),
 }
 
 _ZH: dict[str, str] = {
