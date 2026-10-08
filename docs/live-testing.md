@@ -135,8 +135,13 @@ OPENLIST_ALLOWED_PATHS="$OPENLIST_TEST_DIR" OPENLIST_BLOCKED_PATH=/elsewhere \
 aimed at, never written to — every operation against it has to fail before
 reaching the server.
 
-Reference results on OpenList v4.2.5 (cc87e88): 64/64, 62/62, 16/16, 22/22,
-13/13 (gates: 8 readonly + 5 allowed-paths), 10/10 (multipart) and 21/21
+Both modes also cover the tools that trade in URLs and credentials, not just the
+ones that take a path and write to it: a download URL, a direct-upload
+capability or a generated `.torrent` for an outside path is itself the leak, and
+`readonly` has to reject the ones that write.
+
+Reference results on OpenList v4.2.6 (2bdf16d): 64/64, 62/62, 16/16, 22/22,
+21/21 (gates: 12 readonly + 9 allowed-paths), 10/10 (multipart) and 21/21
 (P1 admin) — all green, with 3 checks skipped.
 
 Those skips are deployment-dependent rather than failures, and each one names

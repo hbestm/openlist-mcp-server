@@ -119,11 +119,42 @@ async def main() -> None:
         await one(
             "share write (readonly)", lambda: tools["create_share"](files=[f"{TEST_DIR}/s.txt"])
         )
+        # Tools that hand out upload credentials or write a .torrent are writes too:
+        # a read-only mode that let them through would still mutate the server.
+        await one(
+            "get_direct_upload_info (readonly)",
+            lambda: tools["get_direct_upload_info"](path=TEST_DIR, file_name="x.bin", file_size=10),
+        )
+        await one(
+            "generate_torrent (readonly)",
+            lambda: tools["generate_torrent"](path=f"{TEST_DIR}/s.txt"),
+        )
+        await one(
+            "torrent_rapid_upload (readonly)",
+            lambda: tools["torrent_rapid_upload"](torrent_data="eA==", path=TEST_DIR),
+        )
         await one(
             "read still allowed (readonly)",
             lambda: tools["list_files"](path=TEST_DIR, per_page=5),
             expect="",
         )
+        # Reading a file is not a write, so no gate rejects its URL. The path may
+        # not exist — every write in this mode was blocked — and a missing-object
+        # error still proves the gate stayed out of the way, while a gate rejection
+        # would surface as PermissionError.
+        try:
+            await tools["get_download_url"](path=f"{TEST_DIR}/s.txt")
+            passed += 1
+            print("[PASS] get_download_url not gated (readonly)")
+        except PermissionError as exc:
+            failed += 1
+            print(f"[FAIL] get_download_url not gated (readonly): {str(exc)[:60]}")
+        except Exception as exc:  # noqa: BLE001
+            passed += 1
+            print(
+                f"[PASS] get_download_url not gated (readonly): "
+                f"reached the server ({type(exc).__name__})"
+            )
     elif MODE == "allowed_paths":
         await one(
             "mkdir outside allowlist (write)",
@@ -148,6 +179,27 @@ async def main() -> None:
             "create_folder inside allowlist",
             lambda: tools["create_folder"](path=f"{TEST_DIR}/gate-check"),
             expect="",
+        )
+        # The allowlist has to reach the tools that trade in URLs and credentials,
+        # not just the ones that take a path and write to it: a download URL or a
+        # direct-upload capability for an outside path is itself the leak.
+        await one(
+            "get_download_url outside allowlist",
+            lambda: tools["get_download_url"](path=f"{BLOCKED_DIR}/x.txt"),
+        )
+        await one(
+            "get_direct_upload_info outside allowlist",
+            lambda: tools["get_direct_upload_info"](
+                path=BLOCKED_DIR, file_name="x.bin", file_size=10
+            ),
+        )
+        await one(
+            "generate_torrent outside allowlist",
+            lambda: tools["generate_torrent"](path=f"{BLOCKED_DIR}/x.txt"),
+        )
+        await one(
+            "content_preview outside allowlist",
+            lambda: tools["content_preview"](path=f"{BLOCKED_DIR}/x.txt"),
         )
         # cleanup the dir created in the allowed test
         with contextlib.suppress(Exception):
