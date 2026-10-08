@@ -517,6 +517,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.6.0 | 2026-10-07 | Dual mcp support (1.x and 2.x) via `_compat` import shim, `mcp` range widened to `<3.0.0`, upstream mcp 2.0 migration merged |
+| 0.5.0 | 2026-08-16 | 107 tools: admin write for storages, offline-download clients and users; `delete_setting` query-param fix; runtime-derived banner counts |
+| 0.4.1 | 2026-08-16 | Multipart resume via `X-File-Md5` identity proof, server-driven chunk slicing, live regression suites |
 | 0.4.0 | 2026-06-14 | Share query-param fix, mcp<2 pin, multipart resumable upload, direct upload, manual scan, move tasks, allowlist gaps fixed |
 | 0.3.3 | 2026-06-10 | _list_items import fix, _human_size dedup, import httpx moved to top |
 | 0.3.2 | 2026-06-10 | Code audit fixes: enforce_writable gaps, delete_share params bug, mirror ordering, walker dedup |
@@ -524,6 +527,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.2.12 | 2026-06-04 | SQLITE_BUSY retry, SSRF fix for magnet/ftp/sftp |
 | 0.2.11 | 2026-06-04 | 79 tools: admin index/setting/user/meta/token tools |
 | 0.2.10 | 2026-06-01 | 67 tools: batch ops, tree/disk_usage, mirror, admin read-only tools, torrent tools |
+| 0.2.9 | 2026-06-01 | get_archive_meta, torrent_upload_parse, list_tasks(all), multipart_form() client helper |
+| 0.2.8 | 2026-05-31 | Batch task ops, tree/disk_usage/find_duplicates/content_preview/mirror, read-only admin, torrent + SSH-key tools |
 | 0.2.7 | 2025-05-30 | Auto TOTP, list_download_tools, validate_path fix |
 | 0.2.6 | 2025-05-30 | offline_download, decompress_archive, get_me, logout, recursive_move |
 | 0.2.5 | 2025-05-29 | 2FA/TOTP, upload_local_file, streaming uploads, release workflow |
