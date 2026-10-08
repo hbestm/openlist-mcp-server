@@ -384,7 +384,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   information leakage in readonly mode.
 - `server.py` version string is now dynamically read from `__version__` instead of hardcoded.
 
-## [0.2.7] — 2025-05-30
+## [0.2.7] — 2026-05-30
 
 ### Added
 - `list_download_tools` tool — query available offline download tools (aria2, Transmission,
@@ -400,7 +400,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `validate_path`: component-level `..` detection — no longer rejects legitimate filenames
   like `backup..2024.tar.gz`.
 
-## [0.2.6] — 2025-05-30
+## [0.2.6] — 2026-05-30
 
 ### Added
 - `tools/advanced.py` module with:
@@ -414,7 +414,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - Startup guide updated to list all 26 tools with categories.
 
-## [0.2.5] — 2025-05-29
+## [0.2.5] — 2026-05-29
 
 ### Added
 - **2FA/TOTP support**: `login()` tool accepts optional `otp_code` parameter for
@@ -441,7 +441,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automatic PyPI publishing from release workflow. Tag push creates a GitHub Release
   with build artifacts only.
 
-## [0.2.4] — 2025-05-28
+## [0.2.4] — 2026-05-28
 
 ### Added
 - **2FA / TOTP login support**: `login()` tool now accepts an optional `otp_code` parameter.
@@ -450,7 +450,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - HTTP warning for plain text credential transmission when using `http://` URLs.
 
-## [0.2.3] — 2025-05-27
+## [0.2.3] — 2026-05-27
 
 ### Added
 - `upload_local_file` tool (gated behind `OPENLIST_LOCAL_UPLOAD_ROOTS`).
@@ -462,13 +462,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `upload_local_file` now requires explicit `OPENLIST_LOCAL_UPLOAD_ROOTS` configuration.
 - HTTP transport warning when using plain `http://` URLs.
 
-## [0.2.2] — 2025-05-26
+## [0.2.2] — 2026-05-26
 
 ### Fixed
 - Version synchronization: all version strings (`pyproject.toml`, source, READMEs) now match.
 - Various documentation inconsistencies resolved.
 
-## [0.2.1] — 2025-05-26
+## [0.2.1] — 2026-05-26
 
 ### Added
 - `.env` file support (via optional `python-dotenv` dependency).
@@ -483,7 +483,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Upload file path handling fix.
 --Friendly startup message when `OPENLIST_URL` is not set.
 
-## [0.2.0] — 2025-05-25
+## [0.2.0] — 2026-05-25
 
 ### Added
 - MCP safety controls: `OPENLIST_READONLY`, `OPENLIST_ALLOWED_PATHS`.
@@ -500,7 +500,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JWT token auto-refresh on 401 responses.
 - Path traversal prevention in `validate_path`.
 
-## [0.1.0] — 2025-05-24
+## [0.1.0] — 2026-05-24
 
 ### Added
 - Initial release.
@@ -529,12 +529,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 0.2.10 | 2026-06-01 | 67 tools: batch ops, tree/disk_usage, mirror, admin read-only tools, torrent tools |
 | 0.2.9 | 2026-06-01 | get_archive_meta, torrent_upload_parse, list_tasks(all), multipart_form() client helper |
 | 0.2.8 | 2026-05-31 | Batch task ops, tree/disk_usage/find_duplicates/content_preview/mirror, read-only admin, torrent + SSH-key tools |
-| 0.2.7 | 2025-05-30 | Auto TOTP, list_download_tools, validate_path fix |
-| 0.2.6 | 2025-05-30 | offline_download, decompress_archive, get_me, logout, recursive_move |
-| 0.2.5 | 2025-05-29 | 2FA/TOTP, upload_local_file, streaming uploads, release workflow |
-| 0.2.4 | 2025-05-28 | 2FA login support, HTTP warning |
-| 0.2.3 | 2025-05-27 | upload_local_file, READONLY, ALLOWED_PATHS |
-| 0.2.2 | 2025-05-26 | Version sync and doc fixes |
-| 0.2.1 | 2025-05-26 | .env support, doc overhaul |
-| 0.2.0 | 2025-05-25 | Safety controls, file/task/share management tools |
-| 0.1.0 | 2025-05-24 | Initial release |
+| 0.2.7 | 2026-05-30 | Auto TOTP, list_download_tools, validate_path fix |
+| 0.2.6 | 2026-05-30 | offline_download, decompress_archive, get_me, logout, recursive_move |
+| 0.2.5 | 2026-05-29 | 2FA/TOTP, upload_local_file, streaming uploads, release workflow |
+| 0.2.4 | 2026-05-28 | 2FA login support, HTTP warning |
+| 0.2.3 | 2026-05-27 | upload_local_file, READONLY, ALLOWED_PATHS |
+| 0.2.2 | 2026-05-26 | Version sync and doc fixes |
+| 0.2.1 | 2026-05-26 | .env support, doc overhaul |
+| 0.2.0 | 2026-05-25 | Safety controls, file/task/share management tools |
+| 0.1.0 | 2026-05-24 | Initial release |
