@@ -184,7 +184,7 @@ openlist-mcp
 |------|------|
 | `get_download_url` | 获取文件下载直链或代理链接。 |
 | `upload_file` | 通过 base64 上传文件内容（最大 100MB）。 |
-| `upload_file_multipart` | 通过可续传的 multipart 分块 API 上传 base64 内容（支持大文件、断点续传）。需 OpenList 含 multipart API 的版本（v4.2.5 之后的 master）。 |
+| `upload_file_multipart` | 通过可续传的 multipart 分块 API 上传 base64 内容（支持大文件、断点续传）。需 OpenList v4.2.5+ 且开启 `multipart_enabled` 设置。 |
 | `upload_local_file` | 上传 MCP 服务器可读取的本地文件。默认禁用，需设 `OPENLIST_LOCAL_UPLOAD_ROOTS`。 |
 | `multipart_upload_local_file` | 通过可续传的 multipart API 流式上传本地文件，不占用内存。 |
 | `multipart_upload_status` | 查询 multipart 上传会话进度（按 upload_id 或 path+size）。 |
@@ -226,6 +226,12 @@ openlist-mcp
 |------|------|
 | `list_storages` | 列出所有已配置的存储后端（挂载路径、驱动、状态、空间）。 |
 | `get_storage_info` | 按 ID 查看单个存储详情。 |
+| `create_storage` | 用驱动名与配置 JSON 新建存储（字段见 `get_driver_info`）。需要 `confirm=true`。 |
+| `update_storage` | 修改存储；先读取当前配置再合并，未指定字段保持不变。需要 `confirm=true`。 |
+| `delete_storage` | 删除存储并卸载挂载。需要 `confirm=true`。 |
+| `enable_storage` | 启用并重新挂载某个存储。需要 `confirm=true`。 |
+| `disable_storage` | 停用某个存储（保留配置，不删除）。需要 `confirm=true`。 |
+| `load_all_storages` | 重新加载并挂载所有已启用的存储。需要 `confirm=true`。 |
 | `list_drivers` | 列出所有已注册的存储驱动名称。 |
 | `get_driver_info` | 查看特定存储驱动的详细信息。 |
 | `list_drivers_detail` | 列出所有驱动及其完整配置模板。 |
@@ -240,8 +246,13 @@ openlist-mcp
 | `clear_search_index` | 清空整个搜索索引。需要 `confirm=true`。 |
 | `list_users` | 分页列出所有用户账号。 |
 | `get_user` | 按 ID 查看单个用户详情。 |
+| `create_user` | 新建用户（guest/admin 角色会被客户端拒绝）。需要 `confirm=true`。 |
+| `update_user` | 修改用户；先读后合并，角色无法通过 API 变更。需要 `confirm=true`。 |
 | `list_metas` | 列出所有元数据配置。 |
 | `get_meta` | 按 ID 查看元数据详情。 |
+| `create_meta` | 给目录挂元数据：密码、读写用户名单、隐藏规则、说明与头部 —— 每项都有 `*_sub` 变体可延伸到子目录。需要 `confirm=true`。 |
+| `update_meta` | 修改目录元数据；先读后合并，未提及的设置保持不变。传 `""` 或 `[]` 可清空某一项。需要 `confirm=true`。 |
+| `delete_meta` | 删除目录的元数据记录；**目录与文件保留**。需要 `confirm=true`。 |
 | `reset_api_token` | 生成新的 API Token。需要 `confirm=true`。 |
 | `start_manual_scan` | 启动对某个存储挂载点的一次性手动扫描。需要 `confirm=true`。 |
 | `stop_manual_scan` | 停止正在运行的手动扫描。需要 `confirm=true`。 |
@@ -272,6 +283,18 @@ openlist-mcp
 | `list_archive_files` | 不解压查看压缩包内文件列表。 |
 | `torrent_upload_parse` | 通过表单上传并解析 `.torrent` 文件，返回解析信息 + 可复用的 base64 数据。 |
 | `list_download_tools` | 查询服务端配置的可用下载工具。 |
+| `set_aria2` | 配置 aria2 离线下载客户端（`uri`、`secret`）。需要 `confirm=true`。 |
+| `set_qbittorrent` | 配置 qBittorrent 客户端（`url`、`seedtime`）。需要 `confirm=true`。 |
+| `set_transmission` | 配置 Transmission 客户端（`uri`、`seedtime`）。需要 `confirm=true`。 |
+| `set_115` | 配置 115 客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_115_open` | 配置 115 Open 客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_123_pan` | 配置 123 网盘客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_123_open` | 配置 123 Open 客户端（`temp_dir`、`callback_url`）。需要 `confirm=true`。 |
+| `set_pikpak` | 配置 PikPak 客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_thunder` | 配置迅雷客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_thunderx` | 配置 ThunderX 客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_thunder_browser` | 配置迅雷浏览器客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_guangyapan` | 配置光雅盘客户端（`temp_dir`）。需要 `confirm=true`。 |
 | `get_archive_extensions` | 查询服务端支持的解压格式扩展名列表。 |
 | `parse_torrent` | 解析 `.torrent` 文件（base64），返回文件列表和元数据。 |
 | `generate_torrent` | 为服务端已有文件生成 `.torrent` 种子文件。 |

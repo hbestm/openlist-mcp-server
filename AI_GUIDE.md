@@ -517,7 +517,7 @@ result = generate_torrent(path="/downloads/myfile.iso")
 
 ## Important Notes
 
-1. **Not all features work on all OpenList versions.** OpenList v4.2.2 has a bug where `POST /api/fs/recursive_move` returns an error. The MCP server automatically falls back to `rename` (same directory) or `move` + `rename` (cross-directory) on affected versions.
+1. **Not all features work on all OpenList versions.** OpenList v4.2.x does not implement `POST /api/fs/recursive_move` (verified on v4.2.2 through v4.2.6). The MCP server automatically falls back to `rename` (same directory) or `move` + `rename` (cross-directory) on affected versions.
 
 2. **`search_files` requires search indexing to be enabled** on the OpenList server. If search is disabled, the tool returns a 404.
 

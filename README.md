@@ -192,7 +192,7 @@ Restart Claude Desktop, then try: *"List the files on my OpenList server."*
 |------|-------------|
 | `get_download_url` | Get direct/proxy download URL for a file. |
 | `upload_file` | Upload base64-encoded file content (max 100 MB). |
-| `upload_file_multipart` | Upload base64 content via the resumable multipart API (large files, resumable). Requires an OpenList build with the multipart API (master after v4.2.5). |
+| `upload_file_multipart` | Upload base64 content via the resumable multipart API (large files, resumable). Requires OpenList v4.2.5+ with the `multipart_enabled` setting. |
 | `upload_local_file` | Upload a local file path readable by the MCP server. Disabled by default; set `OPENLIST_LOCAL_UPLOAD_ROOTS` to enable. |
 | `multipart_upload_local_file` | Stream a local file to the server via the resumable multipart API without loading it into memory. |
 | `multipart_upload_status` | Query a multipart upload session's progress (by upload_id or path+size). |
@@ -234,6 +234,12 @@ Restart Claude Desktop, then try: *"List the files on my OpenList server."*
 |------|-------------|
 | `list_storages` | List all configured storage backends (mount path, driver, status, space). |
 | `get_storage_info` | Get detailed info about a specific storage by ID. |
+| `create_storage` | Create a storage backend from a driver and its config JSON (see `get_driver_info`). Requires `confirm=true`. |
+| `update_storage` | Update a storage; the current config is read first so unspecified fields are preserved. Requires `confirm=true`. |
+| `delete_storage` | Delete a storage backend and unmount it. Requires `confirm=true`. |
+| `enable_storage` | Enable and remount a storage backend. Requires `confirm=true`. |
+| `disable_storage` | Disable a storage backend without deleting its config. Requires `confirm=true`. |
+| `load_all_storages` | Reload and remount every enabled storage. Requires `confirm=true`. |
 | `list_drivers` | List all registered storage driver names. |
 | `get_driver_info` | Get details about a specific storage driver. |
 | `list_drivers_detail` | List all drivers with full configuration templates. |
@@ -248,8 +254,13 @@ Restart Claude Desktop, then try: *"List the files on my OpenList server."*
 | `clear_search_index` | Clear the entire search index. Requires `confirm=true`. |
 | `list_users` | List all user accounts with pagination. |
 | `get_user` | Get detailed info for a specific user by ID. |
+| `create_user` | Create a user account (guest/admin roles are rejected client-side). Requires `confirm=true`. |
+| `update_user` | Update a user; read-then-merge, and the role cannot change via the API. Requires `confirm=true`. |
 | `list_metas` | List all metadata configurations. |
 | `get_meta` | Get metadata details by ID. |
+| `create_meta` | Attach directory metadata: password, per-user read/write lists, hide rules, readme and header — each with a `*_sub` variant that extends it to subdirectories. Requires `confirm=true`. |
+| `update_meta` | Update directory metadata; read-then-merge, so settings the call does not mention survive. Pass `""` or `[]` to clear a field. Requires `confirm=true`. |
+| `delete_meta` | Delete a directory's metadata record; the directory and its files stay. Requires `confirm=true`. |
 | `reset_api_token` | Generate a new API token. Requires `confirm=true`. |
 | `start_manual_scan` | Start a one-off manual scan of a storage mount. Requires `confirm=true`. |
 | `stop_manual_scan` | Stop a running manual scan. Requires `confirm=true`. |
@@ -280,6 +291,18 @@ Restart Claude Desktop, then try: *"List the files on my OpenList server."*
 | `list_archive_files` | List files inside an archive without extracting. |
 | `torrent_upload_parse` | Upload and parse a `.torrent` file via multipart form, returns info + reusable base64 data. |
 | `list_download_tools` | List available download tools configured on the OpenList server. |
+| `set_aria2` | Configure the aria2 offline-download client (`uri`, `secret`). Requires `confirm=true`. |
+| `set_qbittorrent` | Configure the qBittorrent client (`url`, `seedtime`). Requires `confirm=true`. |
+| `set_transmission` | Configure the Transmission client (`uri`, `seedtime`). Requires `confirm=true`. |
+| `set_115` | Configure the 115 client (`temp_dir`). Requires `confirm=true`. |
+| `set_115_open` | Configure the 115 Open client (`temp_dir`). Requires `confirm=true`. |
+| `set_123_pan` | Configure the 123 Pan client (`temp_dir`). Requires `confirm=true`. |
+| `set_123_open` | Configure the 123 Open client (`temp_dir`, `callback_url`). Requires `confirm=true`. |
+| `set_pikpak` | Configure the PikPak client (`temp_dir`). Requires `confirm=true`. |
+| `set_thunder` | Configure the Thunder client (`temp_dir`). Requires `confirm=true`. |
+| `set_thunderx` | Configure the ThunderX client (`temp_dir`). Requires `confirm=true`. |
+| `set_thunder_browser` | Configure the Thunder Browser client (`temp_dir`). Requires `confirm=true`. |
+| `set_guangyapan` | Configure the GuangYaPan client (`temp_dir`). Requires `confirm=true`. |
 | `get_archive_extensions` | List archive file extensions supported by the server. |
 | `parse_torrent` | Parse a `.torrent` file (base64) and return file list and metadata. |
 | `generate_torrent` | Generate a `.torrent` file for an existing file on the server. |
