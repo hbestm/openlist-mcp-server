@@ -14,7 +14,6 @@ import asyncio
 import base64
 import hashlib
 import io
-import json
 import os
 import sys
 import time
@@ -85,8 +84,12 @@ async def main() -> None:
         ("move-src/dir1/file1.txt", b"move me"),
     ]
     for rel, content in uploads:
-        res = await client.upload(path=f"{base}/{os.path.dirname(rel)}", file_content=content,
-                                  file_name=os.path.basename(rel), as_task=False)
+        res = await client.upload(
+            path=f"{base}/{os.path.dirname(rel)}",
+            file_content=content,
+            file_name=os.path.basename(rel),
+            as_task=False,
+        )
         check(f"upload {rel}", res is not None)
 
     # ── fs group ──────────────────────────────────────────────────────────
@@ -98,62 +101,122 @@ async def main() -> None:
     check("list_dirs base", dirs is not None)
 
     info = await safe(client, "POST", "fs/get", json={"path": f"{base}/a.txt"})
-    check("get_file_info a.txt", (info or {}).get("name") == "a.txt",
-          str(clean(info or {}).get("name")))
+    check(
+        "get_file_info a.txt",
+        (info or {}).get("name") == "a.txt",
+        str(clean(info or {}).get("name")),
+    )
 
     created = await safe(client, "POST", "fs/mkdir", json={"path": f"{base}/newdir"})
     check("create_folder newdir", created is not None)
 
-    renamed = await safe(client, "POST", "fs/rename", json={"path": f"{base}/a.txt", "name": "a-renamed.txt"})
+    renamed = await safe(
+        client, "POST", "fs/rename", json={"path": f"{base}/a.txt", "name": "a-renamed.txt"}
+    )
     check("rename a.txt", renamed is not None)
 
-    batched = await safe(client, "POST", "fs/batch_rename", json={
-        "src_dir": base, "rename_objects": [
-            {"src_name": "photo.png", "new_name": "photo2.png"},
-            {"src_name": "regexdir", "new_name": "regexdir2"},
-        ]})
+    batched = await safe(
+        client,
+        "POST",
+        "fs/batch_rename",
+        json={
+            "src_dir": base,
+            "rename_objects": [
+                {"src_name": "photo.png", "new_name": "photo2.png"},
+                {"src_name": "regexdir", "new_name": "regexdir2"},
+            ],
+        },
+    )
     check("batch_rename", batched is not None)
 
-    regex = await safe(client, "POST", "fs/regex_rename", json={
-        "src_dir": f"{base}/regexdir2", "src_name_regex": r"^(.*)\.txt$", "new_name_regex": r"$1.md"})
+    regex = await safe(
+        client,
+        "POST",
+        "fs/regex_rename",
+        json={
+            "src_dir": f"{base}/regexdir2",
+            "src_name_regex": r"^(.*)\.txt$",
+            "new_name_regex": r"$1.md",
+        },
+    )
     check("regex_rename .txt->.md", regex is not None)
 
-    copied = await safe(client, "POST", "fs/copy", json={"src_dir": base, "src_name": "photo2.png",
-                                                         "dst_dir": f"{base}/docs"})
+    copied = await safe(
+        client,
+        "POST",
+        "fs/copy",
+        json={"src_dir": base, "src_name": "photo2.png", "dst_dir": f"{base}/docs"},
+    )
     check("copy photo2.png -> docs", copied is not None)
 
-    moved = await safe(client, "POST", "fs/move", json={"src_dir": base, "src_name": "a-renamed.txt",
-                                                        "dst_dir": f"{base}/docs"})
+    moved = await safe(
+        client,
+        "POST",
+        "fs/move",
+        json={"src_dir": base, "src_name": "a-renamed.txt", "dst_dir": f"{base}/docs"},
+    )
     check("move a-renamed.txt -> docs", moved is not None)
 
-    rec = await safe(client, "POST", "fs/recursive_move", json={"src_dir": f"{base}/move-src",
-                                                                "dst_dir": f"{base}/move-dst"})
+    rec = await safe(
+        client,
+        "POST",
+        "fs/recursive_move",
+        json={"src_dir": f"{base}/move-src", "dst_dir": f"{base}/move-dst"},
+    )
     check("recursive_move move-src -> move-dst", rec is not None)
-    moved_list = await safe(client, "POST", "fs/list", json={"path": f"{base}/move-dst/dir1", "page": 1, "per_page": 50})
+    moved_list = await safe(
+        client, "POST", "fs/list", json={"path": f"{base}/move-dst/dir1", "page": 1, "per_page": 50}
+    )
     check("recursive_move content landed", bool((moved_list or {}).get("content")))
 
     await safe(client, "POST", "fs/remove", json={"dir": base, "names": ["data.zip"]})
 
-    tree = await safe(client, "POST", "fs/list", json={"path": f"{base}/docs", "page": 1, "per_page": 50})
+    tree = await safe(
+        client, "POST", "fs/list", json={"path": f"{base}/docs", "page": 1, "per_page": 50}
+    )
     check("tree via list (docs has moved file)", bool((tree or {}).get("content")))
 
-    du = await safe(client, "POST", "fs/recursive_move", json={"src_dir": f"{base}/docs", "dst_dir": f"{base}/docs"})
+    du = await safe(
+        client,
+        "POST",
+        "fs/recursive_move",
+        json={"src_dir": f"{base}/docs", "dst_dir": f"{base}/docs"},
+    )
     check("recursive_move no-op safe", du is not None)
 
-    mirror = await safe(client, "POST", "fs/copy", json={"src_dir": f"{base}/docs", "src_name": "a-renamed.txt",
-                                                        "dst_dir": f"{base}/mirror-test"})
+    mirror = await safe(
+        client,
+        "POST",
+        "fs/copy",
+        json={
+            "src_dir": f"{base}/docs",
+            "src_name": "a-renamed.txt",
+            "dst_dir": f"{base}/mirror-test",
+        },
+    )
     check("copy mirror-test", mirror is not None)
 
-    search = await safe(client, "POST", "fs/search", json={"parent": base, "keywords": "renamed", "page": 1, "per_page": 20})
+    search = await safe(
+        client,
+        "POST",
+        "fs/search",
+        json={"parent": base, "keywords": "renamed", "page": 1, "per_page": 20},
+    )
     check("search_files 'renamed'", search is not None, str(clean(search or {}))[:120])
 
     # ── transfer group ────────────────────────────────────────────────────
     dl = await safe(client, "POST", "fs/get", json={"path": f"{base}/docs/a-renamed.txt"})
-    check("get_download_url (raw_url)", bool((dl or {}).get("raw_url")), str((dl or {}).get("raw_url", ""))[:60])
+    check(
+        "get_download_url (raw_url)",
+        bool((dl or {}).get("raw_url")),
+        str((dl or {}).get("raw_url", ""))[:60],
+    )
 
     up = await safe(client, "POST", "fs/put", json={})  # not callable directly; use client.upload
     _ = up
-    u2 = await client.upload(path=base, file_content=b"base64 upload test", file_name="b64.txt", as_task=False)
+    u2 = await client.upload(
+        path=base, file_content=b"base64 upload test", file_name="b64.txt", as_task=False
+    )
     check("upload_file (base64)", u2 is not None)
 
     # multipart on v4.2.2 → graceful failure
@@ -170,13 +233,19 @@ async def main() -> None:
     except OpenListError as exc:
         check("multipart_status graceful fail", True, f"err: {exc.message[:80]}")
 
-    dui = await safe(client, "POST", "fs/get_direct_upload_info",
-                     json={"path": base, "file_name": "b64.txt", "file_size": 19})
+    dui = await safe(
+        client,
+        "POST",
+        "fs/get_direct_upload_info",
+        json={"path": base, "file_name": "b64.txt", "file_size": 19},
+    )
     not_impl = (dui or {}).get("__error__", "").find("not implement") >= 0
     check("get_direct_upload_info (Local → not implement)", not_impl, str(dui or {})[:100])
 
     # ── share group ───────────────────────────────────────────────────────
-    share = await safe(client, "POST", "share/create", json={"files": [f"{base}/docs/a-renamed.txt"], "pwd": "t"})
+    share = await safe(
+        client, "POST", "share/create", json={"files": [f"{base}/docs/a-renamed.txt"], "pwd": "t"}
+    )
     share_id = (share or {}).get("id")
     check("create_share", bool(share_id), str(share_id))
 
@@ -185,7 +254,12 @@ async def main() -> None:
         check("get_share_info", bool(gs and gs.get("content") or gs), str(clean(gs or {}))[:100])
         lis = await safe(client, "GET", "share/list", params={"page": 1, "per_page": 50})
         check("list_shares", lis is not None)
-        upd = await safe(client, "POST", "share/update", json={"id": share_id, "remark": "fulltest", "files": [f"{base}/docs/a-renamed.txt"]})
+        upd = await safe(
+            client,
+            "POST",
+            "share/update",
+            json={"id": share_id, "remark": "fulltest", "files": [f"{base}/docs/a-renamed.txt"]},
+        )
         check("update_share", upd is not None)
         dis = await safe(client, "POST", "share/disable", params={"id": share_id})
         en = await safe(client, "POST", "share/enable", params={"id": share_id})
@@ -194,8 +268,12 @@ async def main() -> None:
         check("delete_share", dele is not None)
 
     # ── task group (own upload task only) ────────────────────────────────
-    task_up = await client.upload(path=f"{base}/docs", file_content=b"task body" * 1000,
-                                  file_name="taskfile.bin", as_task=True)
+    task_up = await client.upload(
+        path=f"{base}/docs",
+        file_content=b"task body" * 1000,
+        file_name="taskfile.bin",
+        as_task=True,
+    )
     tids = (task_up or {}).get("id") or (task_up or {}).get("value")
     check("upload as_task=True returns task id", bool(tids), str(tids))
     if tids:
@@ -212,13 +290,25 @@ async def main() -> None:
 
     # ── admin group (safe read-only + scoped ops) ─────────────────────────
     st = await safe(client, "GET", "admin/storage/list")
-    check("admin list_storages", bool(st and st.get("content")), str(len((st or {}).get("content", []))))
+    check(
+        "admin list_storages",
+        bool(st and st.get("content")),
+        str(len((st or {}).get("content", []))),
+    )
     si = await safe(client, "GET", "admin/storage/get", params={"id": 2})
-    check("admin get_storage_info(2 /test)", (si or {}).get("mount_path") == "/test", str(clean(si or {}))[:80])
+    check(
+        "admin get_storage_info(2 /test)",
+        (si or {}).get("mount_path") == "/test",
+        str(clean(si or {}))[:80],
+    )
     dn = await safe(client, "GET", "admin/driver/names")
     check("admin list_drivers", dn is not None and len(dn.get("data", []) or dn) > 0)
     di = await safe(client, "GET", "admin/driver/info", params={"driver": "Local"})
-    check("admin get_driver_info(Local)", (di or {}).get("data") or di in ({}, None), str(clean(di or {}))[:100])
+    check(
+        "admin get_driver_info(Local)",
+        (di or {}).get("data") or di in ({}, None),
+        str(clean(di or {}))[:100],
+    )
     dd = await safe(client, "GET", "admin/driver/list")
     check("admin list_drivers_detail", dd is not None)
     gs2 = await safe(client, "GET", "admin/setting/get", params={"key": "aria2"})
@@ -228,7 +318,9 @@ async def main() -> None:
     su = await safe(client, "GET", "admin/user/list", params={"page": 1, "per_page": 50})
     check("admin list_users", su is not None)
     gu = await safe(client, "GET", "admin/user/get", params={"id": 1})
-    check("admin get_user(1)", (gu or {}).get("username") == "admin", str((gu or {}).get("username")))
+    check(
+        "admin get_user(1)", (gu or {}).get("username") == "admin", str((gu or {}).get("username"))
+    )
     sm = await safe(client, "GET", "admin/meta/list", params={"page": 1, "per_page": 50})
     check("admin list_metas", sm is not None)
     gm = await safe(client, "GET", "admin/meta/get", params={"id": 0})
@@ -242,7 +334,11 @@ async def main() -> None:
     sc = await safe(client, "POST", "admin/scan/start", json={"path": "/test"})
     check("admin/scan/start /test", sc is not None)
     sp = await safe(client, "GET", "admin/scan/progress")
-    check("admin/scan/progress", sp is not None and "obj_count" in (sp or {}), str(clean(sp or {}))[:80])
+    check(
+        "admin/scan/progress",
+        sp is not None and "obj_count" in (sp or {}),
+        str(clean(sp or {}))[:80],
+    )
     ss = await safe(client, "POST", "admin/scan/stop")
     check("admin/scan/stop", ss is not None)
 
@@ -257,23 +353,43 @@ async def main() -> None:
     check("get_archive_extensions", ae is not None)
 
     # archive: upload zip again, then meta/list/decompress
-    zip2 = await client.upload(path=base, file_content=zip_bytes, file_name="data.zip", as_task=False)
+    zip2 = await client.upload(
+        path=base, file_content=zip_bytes, file_name="data.zip", as_task=False
+    )
     check("re-upload data.zip", zip2 is not None)
     am = await safe(client, "POST", "fs/archive/meta", json={"path": f"{base}/data.zip"})
     check("get_archive_meta", am is not None, str(clean(am or {}))[:100])
-    al2 = await safe(client, "POST", "fs/archive/list", json={"path": f"{base}/data.zip", "page": 1, "per_page": 50})
+    al2 = await safe(
+        client,
+        "POST",
+        "fs/archive/list",
+        json={"path": f"{base}/data.zip", "page": 1, "per_page": 50},
+    )
     check("list_archive_files", al2 is not None)
-    dcz = await safe(client, "POST", "fs/archive/decompress", json={
-        "src_dir": base, "name": ["data.zip"], "dst_dir": f"{base}/unzipped", "overwrite": True})
+    dcz = await safe(
+        client,
+        "POST",
+        "fs/archive/decompress",
+        json={
+            "src_dir": base,
+            "name": ["data.zip"],
+            "dst_dir": f"{base}/unzipped",
+            "overwrite": True,
+        },
+    )
     check("decompress_archive", dcz is not None)
-    uz = await safe(client, "POST", "fs/list", json={"path": f"{base}/unzipped", "page": 1, "per_page": 50})
+    uz = await safe(
+        client, "POST", "fs/list", json={"path": f"{base}/unzipped", "page": 1, "per_page": 50}
+    )
     unames = [i.get("name") for i in (uz or {}).get("content", [])]
     check("decompressed files present", "doc1.txt" in unames and "doc2.txt" in unames, str(unames))
 
     # torrent: minimal valid metainfo
     pieces = hashlib.sha1(b"hello world").digest()
-    meta = {b"announce": b"https://example.com/announce",
-            b"info": {b"name": b"hello.txt", b"length": 11, b"piece length": 16384, b"pieces": pieces}}
+    meta = {
+        b"announce": b"https://example.com/announce",
+        b"info": {b"name": b"hello.txt", b"length": 11, b"piece length": 16384, b"pieces": pieces},
+    }
 
     def bencode(d):
         if isinstance(d, dict):
@@ -291,15 +407,28 @@ async def main() -> None:
     has_hash = bool((pt or {}).get("info_hash") or (pt or {}).get("info"))
     check("parse_torrent", has_hash, str(clean(pt or {}))[:100])
 
-    gt = await safe(client, "POST", "fs/torrent/generate", json={"path": f"{base}/docs/a-renamed.txt"})
+    gt = await safe(
+        client, "POST", "fs/torrent/generate", json={"path": f"{base}/docs/a-renamed.txt"}
+    )
     has_td = bool((gt or {}).get("torrent_data"))
-    check("generate_torrent", has_td, f"size={(gt or {}).get('size')}, hash={(gt or {}).get('info_hash', '')[:12]}")
+    check(
+        "generate_torrent",
+        has_td,
+        f"size={(gt or {}).get('size')}, hash={(gt or {}).get('info_hash', '')[:12]}",
+    )
 
-    rt = await safe(client, "POST", "fs/torrent/rapid_upload", json={"torrent_data": tb64, "path": base})
-    check("torrent_rapid_upload (SFTP → driver answer)", rt is not None and "__error__" not in rt,
-          f"{clean(rt or {})}".replace("__error__", "")[:120])
+    rt = await safe(
+        client, "POST", "fs/torrent/rapid_upload", json={"torrent_data": tb64, "path": base}
+    )
+    check(
+        "torrent_rapid_upload (SFTP → driver answer)",
+        rt is not None and "__error__" not in rt,
+        f"{clean(rt or {})}".replace("__error__", "")[:120],
+    )
 
-    fd = await safe(client, "POST", "fs/list", json={"path": f"{base}/docs", "page": 1, "per_page": 200})
+    fd = await safe(
+        client, "POST", "fs/list", json={"path": f"{base}/docs", "page": 1, "per_page": 200}
+    )
     _ = fd
     cp = await safe(client, "POST", "fs/get", json={"path": f"{base}/docs/a-renamed.txt"})
     check("content_preview (fs/get → raw_url)", bool((cp or {}).get("raw_url")))
@@ -308,7 +437,9 @@ async def main() -> None:
     lo = await safe(client, "GET", "auth/logout")
     check("logout", lo is not None)
     me2 = await safe(client, "GET", "me")
-    check("auto re-login after logout", bool(client._token) and (me2 or {}).get("username") == "admin")
+    check(
+        "auto re-login after logout", bool(client._token) and (me2 or {}).get("username") == "admin"
+    )
 
     # ── Cleanup ───────────────────────────────────────────────────────────
     rm = await safe(client, "POST", "fs/remove", json={"dir": "/test", "names": [f"mcp-full-{ts}"]})

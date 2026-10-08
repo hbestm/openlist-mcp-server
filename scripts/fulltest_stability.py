@@ -1,8 +1,7 @@
 """Stability & robustness tests against the live OpenList (confined to /test)."""
 
 import asyncio
-import json
-import os
+import contextlib
 import sys
 import time
 from pathlib import Path
@@ -29,11 +28,11 @@ async def main() -> None:
 
     # 1. sequential repeat (30x) — no latency blowup, no crash
     t0 = time.perf_counter()
-    for i in range(30):
+    for _ in range(30):
         r = await c.request("POST", "fs/list", json={"path": base, "page": 1, "per_page": 50})
         assert r is not None
     dt = time.perf_counter() - t0
-    check("30x sequential list_files", dt < 15, f"{dt:.2f}s total ({dt/30*1000:.0f}ms/call)")
+    check("30x sequential list_files", dt < 15, f"{dt:.2f}s total ({dt / 30 * 1000:.0f}ms/call)")
 
     # 2. concurrent fan-out (20x same op on shared client)
     async def one(i: int):
@@ -41,7 +40,11 @@ async def main() -> None:
 
     results = await asyncio.gather(*(one(i) for i in range(20)), return_exceptions=True)
     errs = [r for r in results if isinstance(r, BaseException)]
-    check("20x concurrent list_files (shared client)", not errs, f"{len(errs)} errors" if errs else "all ok")
+    check(
+        "20x concurrent list_files (shared client)",
+        not errs,
+        f"{len(errs)} errors" if errs else "all ok",
+    )
 
     # 3. mixed concurrent load: get + list + dirs
     async def mixed(i: int):
@@ -57,14 +60,38 @@ async def main() -> None:
 
     # 4. error-path matrix — every bad input must raise a *typed* friendly error, never a hang/raw crash
     bad_cases = [
-        ("traversal path", lambda: c.request("POST", "fs/list", json={"path": "../etc", "page": 1, "per_page": 5})),
-        ("traversal path get", lambda: c.request("POST", "fs/get", json={"path": "/test/../../etc/passwd"})),
-        ("per_page=0", lambda: c.request("POST", "fs/list", json={"path": base, "page": 1, "per_page": 0})),
-        ("page=-5", lambda: c.request("POST", "fs/list", json={"path": base, "page": -5, "per_page": 10})),
-        ("empty names remove", lambda: c.request("POST", "fs/remove", json={"dir": base, "names": []})),
-        ("nested traversal remove", lambda: c.request("POST", "fs/remove", json={"dir": "/test", "names": ["../x"]})),
-        ("nonexistent share get", lambda: c.request("GET", "share/get", params={"id": "no-such-id"})),
-        ("bad task type list", lambda: c.request("GET", "task/bogus/done", params={"page": 1, "per_page": 5})),
+        (
+            "traversal path",
+            lambda: c.request("POST", "fs/list", json={"path": "../etc", "page": 1, "per_page": 5}),
+        ),
+        (
+            "traversal path get",
+            lambda: c.request("POST", "fs/get", json={"path": "/test/../../etc/passwd"}),
+        ),
+        (
+            "per_page=0",
+            lambda: c.request("POST", "fs/list", json={"path": base, "page": 1, "per_page": 0}),
+        ),
+        (
+            "page=-5",
+            lambda: c.request("POST", "fs/list", json={"path": base, "page": -5, "per_page": 10}),
+        ),
+        (
+            "empty names remove",
+            lambda: c.request("POST", "fs/remove", json={"dir": base, "names": []}),
+        ),
+        (
+            "nested traversal remove",
+            lambda: c.request("POST", "fs/remove", json={"dir": "/test", "names": ["../x"]}),
+        ),
+        (
+            "nonexistent share get",
+            lambda: c.request("GET", "share/get", params={"id": "no-such-id"}),
+        ),
+        (
+            "bad task type list",
+            lambda: c.request("GET", "task/bogus/done", params={"page": 1, "per_page": 5}),
+        ),
         ("unknown api route", lambda: c.request("GET", "fs/no_such_endpoint")),
     ]
     for label, fn in bad_cases:
@@ -93,7 +120,9 @@ async def main() -> None:
 
     # 7. upload churn: 10 files up, 10 down, no fd/token leak
     for i in range(10):
-        await c.upload(path=base, file_content=bytes([i]) * 512, file_name=f"churn{i}.bin", as_task=False)
+        await c.upload(
+            path=base, file_content=bytes([i]) * 512, file_name=f"churn{i}.bin", as_task=False
+        )
     for i in range(10):
         await c.request("POST", "fs/remove", json={"dir": base, "names": [f"churn{i}.bin"]})
     lst = await c.request("POST", "fs/list", json={"path": base, "page": 1, "per_page": 50})
@@ -102,17 +131,15 @@ async def main() -> None:
 
     # 8. large listing (mount-wide) stays within sane time
     t0 = time.perf_counter()
-    big = await c.request("POST", "fs/list", json={"path": "/test", "page": 1, "per_page": 500})
+    await c.request("POST", "fs/list", json={"path": "/test", "page": 1, "per_page": 500})
     dt = time.perf_counter() - t0
     check("mount-wide list /test (500/page)", dt < 10, f"{dt:.2f}s")
 
     # 9. cleanup
     await c.request("POST", "fs/remove", json={"dir": "/test", "names": [base.split("/")[-1]]})
     # 10. clear leftover copy tasks from earlier sweeps to leave server tidy
-    try:
+    with contextlib.suppress(Exception):
         await c.request("POST", "task/copy/clear_done")
-    except Exception:  # noqa: BLE001
-        pass
     await c.close()
 
     print("\n===== STABILITY SUMMARY =====")

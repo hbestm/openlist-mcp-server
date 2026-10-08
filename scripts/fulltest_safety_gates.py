@@ -7,6 +7,7 @@ Run twice with different env:
 """
 
 import asyncio
+import contextlib
 import json
 import os
 import sys
@@ -39,9 +40,16 @@ class Recorder:
 
 async def main() -> None:
     r = Recorder()
-    for fn in (register_auth_tools, register_public_tools, register_fs_tools,
-               register_transfer_tools, register_share_tools, register_task_tools,
-               register_admin_tools, register_advanced_tools):
+    for fn in (
+        register_auth_tools,
+        register_public_tools,
+        register_fs_tools,
+        register_transfer_tools,
+        register_share_tools,
+        register_task_tools,
+        register_admin_tools,
+        register_advanced_tools,
+    ):
         fn(r)
     tools = r.tools
     passed = failed = 0
@@ -63,28 +71,61 @@ async def main() -> None:
         failed += not ok
 
     if MODE == "readonly":
-        await one("create_folder (readonly)", lambda: tools["create_folder"](path="/test/readonly-check"))
+        await one(
+            "create_folder (readonly)", lambda: tools["create_folder"](path="/test/readonly-check")
+        )
         await one("rename (readonly)", lambda: tools["rename"](path="/test/s.txt", name="x.txt"))
-        await one("remove (readonly)", lambda: tools["remove"](directory="/test", names=["s.txt"], confirm=True))
-        await one("upload_file (readonly)",
-                  lambda: tools["upload_file"](path="/test", file_name="x.txt", file_content_base64="aGk=", as_task=False))
-        await one("move (readonly)", lambda: tools["move"](src_dir="/test", dst_dir="/test/docs", names=["s.txt"]))
-        await one("copy (readonly)", lambda: tools["copy"](src_dir="/test", dst_dir="/test/docs", names=["s.txt"]))
+        await one(
+            "remove (readonly)",
+            lambda: tools["remove"](directory="/test", names=["s.txt"], confirm=True),
+        )
+        await one(
+            "upload_file (readonly)",
+            lambda: tools["upload_file"](
+                path="/test", file_name="x.txt", file_content_base64="aGk=", as_task=False
+            ),
+        )
+        await one(
+            "move (readonly)",
+            lambda: tools["move"](src_dir="/test", dst_dir="/test/docs", names=["s.txt"]),
+        )
+        await one(
+            "copy (readonly)",
+            lambda: tools["copy"](src_dir="/test", dst_dir="/test/docs", names=["s.txt"]),
+        )
         await one("share write (readonly)", lambda: tools["create_share"](files=["/test/s.txt"]))
-        await one("read still allowed (readonly)", lambda: tools["list_files"](path="/test", per_page=5), expect="")
+        await one(
+            "read still allowed (readonly)",
+            lambda: tools["list_files"](path="/test", per_page=5),
+            expect="",
+        )
     elif MODE == "allowed_paths":
-        await one("mkdir outside allowlist (write)", lambda: tools["create_folder"](path="/199/blocked"))
-        await one("remove outside allowlist", lambda: tools["remove"](directory="/199", names=["x"], confirm=True))
-        await one("upload outside allowlist",
-                  lambda: tools["upload_file"](path="/199", file_name="x.txt", file_content_base64="aGk=", as_task=False))
-        await one("list inside allowlist", lambda: tools["list_files"](path="/test", per_page=5), expect="")
-        await one("create_folder inside allowlist",
-                  lambda: tools["create_folder"](path=f"/test/gate-check"), expect="")
+        await one(
+            "mkdir outside allowlist (write)", lambda: tools["create_folder"](path="/199/blocked")
+        )
+        await one(
+            "remove outside allowlist",
+            lambda: tools["remove"](directory="/199", names=["x"], confirm=True),
+        )
+        await one(
+            "upload outside allowlist",
+            lambda: tools["upload_file"](
+                path="/199", file_name="x.txt", file_content_base64="aGk=", as_task=False
+            ),
+        )
+        await one(
+            "list inside allowlist",
+            lambda: tools["list_files"](path="/test", per_page=5),
+            expect="",
+        )
+        await one(
+            "create_folder inside allowlist",
+            lambda: tools["create_folder"](path="/test/gate-check"),
+            expect="",
+        )
         # cleanup the dir created in the allowed test
-        try:
+        with contextlib.suppress(Exception):
             await tools["remove"](directory="/test", names=["gate-check"], confirm=True)
-        except Exception:  # noqa: BLE001
-            pass
 
     print(f"\n===== {MODE.upper()} GATE SUMMARY =====  PASS: {passed}  FAIL: {failed}")
     sys.exit(1 if failed else 0)

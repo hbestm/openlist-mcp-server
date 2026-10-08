@@ -10,6 +10,7 @@ Usage:
 """
 
 import asyncio
+import contextlib
 import json
 import os
 import sys
@@ -39,15 +40,30 @@ async def call(session, tool: str, args: dict | None = None):
     return await session.call_tool(tool, args or {})
 
 
-async def main() -> None:
-    env = {
-        "OPENLIST_URL": os.environ.get("OPENLIST_URL", "http://192.168.123.199:5244"),
-        "OPENLIST_USERNAME": os.environ.get("OPENLIST_USERNAME", "admin"),
-        "OPENLIST_PASSWORD": os.environ.get("OPENLIST_PASSWORD", "openlist123"),
-        "OPENLIST_ALLOW_HTTP": "true",
-        "OPENLIST_SKILLS": "all",
+def _child_env() -> dict[str, str]:
+    """Build the environment for the spawned server from this process's own.
+
+    The connection settings are forwarded, never defaulted: a missing value is a
+    configuration error worth failing on, and a hard-coded host or password here
+    would publish that instance's credentials to everyone who can read the repo.
+    """
+    required = ("OPENLIST_URL", "OPENLIST_USERNAME", "OPENLIST_PASSWORD")
+    missing = [name for name in required if not os.environ.get(name)]
+    if missing:
+        raise SystemExit(f"missing required environment variable(s): {', '.join(missing)}")
+    return {
+        **{name: os.environ[name] for name in required},
+        "OPENLIST_ALLOW_HTTP": os.environ.get("OPENLIST_ALLOW_HTTP", "true"),
+        # The suite asserts the full registry, so the child must load every group.
+        "OPENLIST_SKILLS": os.environ.get("OPENLIST_SKILLS", "all"),
     }
-    server_params = StdioServerParameters(command=sys.executable, args=["-m", "openlist_mcp.server"], env=env)
+
+
+async def main() -> None:
+    env = _child_env()
+    server_params = StdioServerParameters(
+        command=sys.executable, args=["-m", "openlist_mcp.server"], env=env
+    )
     ts = int(time.time())
     base = f"/test/mcp-e2e-{ts}"
 
@@ -64,8 +80,16 @@ async def main() -> None:
 
         r = await call(session, "create_folder", {"path": base})
         check("create_folder", "created" in text(r).lower(), text(r)[:60])
-        r = await call(session, "upload_file", {"path": base, "file_name": "s.txt",
-                                                "file_content_base64": "c3RhYmlsaXR5", "as_task": False})
+        r = await call(
+            session,
+            "upload_file",
+            {
+                "path": base,
+                "file_name": "s.txt",
+                "file_content_base64": "c3RhYmlsaXR5",
+                "as_task": False,
+            },
+        )
         check("upload_file", "successfully" in text(r).lower(), text(r)[:60])
 
         # 1. repeated calls through the protocol — no drift/leak
@@ -79,10 +103,28 @@ async def main() -> None:
 
         # 2. bad inputs via protocol → error text, server stays alive
         r = await call(session, "list_files", {"path": "../etc", "per_page": 5})
-        check("bad path over protocol (error text)", "error" in text(r).lower() or "relative" in text(r).lower(), text(r)[:80])
-        r = await call(session, "upload_file", {"path": base, "file_name": "bad.txt",
-                                                "file_content_base64": "!!!not-base64!!!", "as_task": False})
-        check("bad base64 over protocol (error text)", "error" in text(r).lower() or "invalid" in text(r).lower() or "base64" in text(r).lower(), text(r)[:80])
+        check(
+            "bad path over protocol (error text)",
+            "error" in text(r).lower() or "relative" in text(r).lower(),
+            text(r)[:80],
+        )
+        r = await call(
+            session,
+            "upload_file",
+            {
+                "path": base,
+                "file_name": "bad.txt",
+                "file_content_base64": "!!!not-base64!!!",
+                "as_task": False,
+            },
+        )
+        check(
+            "bad base64 over protocol (error text)",
+            "error" in text(r).lower()
+            or "invalid" in text(r).lower()
+            or "base64" in text(r).lower(),
+            text(r)[:80],
+        )
         # server still alive after errors
         r = await call(session, "get_me")
         check("server alive after error calls", "admin" in text(r), text(r)[:60])
@@ -90,19 +132,25 @@ async def main() -> None:
         # 3. share lifecycle via protocol
         r = await call(session, "create_share", {"files": [f"{base}/s.txt"], "pwd": "e2e"})
         sid = None
-        try:
+        with contextlib.suppress(Exception):
             sid = json.loads(text(r)).get("id")
-        except Exception:  # noqa: BLE001
-            pass
         check("create_share", bool(sid), str(sid))
         if sid:
-            for tool, needle in (("disable_share", "disabled"), ("enable_share", "enabled"),
-                                 ("get_share_info", sid), ("delete_share", "deleted")):
+            for tool, needle in (
+                ("disable_share", "disabled"),
+                ("enable_share", "enabled"),
+                ("get_share_info", sid),
+                ("delete_share", "deleted"),
+            ):
                 args = {"share_id": sid} if tool != "get_share_info" else {"share_id": sid}
                 if tool == "delete_share":
                     args["confirm"] = True
                 r = await call(session, tool, args)
-                check(f"{tool} via protocol", needle in text(r).lower() or needle in text(r), text(r)[:60])
+                check(
+                    f"{tool} via protocol",
+                    needle in text(r).lower() or needle in text(r),
+                    text(r)[:60],
+                )
 
         # 4. task listing across types via protocol
         for t in ("upload", "copy", "move"):
@@ -110,9 +158,16 @@ async def main() -> None:
             check(f"list_tasks({t}) via protocol", "value" in text(r), text(r)[:50])
 
         # 5. multipart upload via protocol (v4.2.5+)
-        r = await call(session, "upload_file_multipart", {"path": base, "file_name": "big.bin",
-                                                          "file_content_base64": "Ymln", "chunk_size": 8})
-        check("multipart upload via protocol", "complete" in text(r).lower() or "ok" in text(r).lower(), text(r)[:80])
+        r = await call(
+            session,
+            "upload_file_multipart",
+            {"path": base, "file_name": "big.bin", "file_content_base64": "Ymln", "chunk_size": 8},
+        )
+        check(
+            "multipart upload via protocol",
+            "complete" in text(r).lower() or "ok" in text(r).lower(),
+            text(r)[:80],
+        )
 
         # 6. manual scan via protocol
         r = await call(session, "start_manual_scan", {"path": "/test", "confirm": True})
@@ -120,10 +175,16 @@ async def main() -> None:
         r = await call(session, "get_manual_scan_progress", {})
         check("get_manual_scan_progress", "obj_count" in text(r), text(r)[:60])
         r = await call(session, "stop_manual_scan", {"confirm": True})
-        check("stop_manual_scan", "stopped" in text(r).lower() or "not running" in text(r).lower(), text(r)[:60])
+        check(
+            "stop_manual_scan",
+            "stopped" in text(r).lower() or "not running" in text(r).lower(),
+            text(r)[:60],
+        )
 
         # 7. cleanup + logout
-        r = await call(session, "remove", {"directory": "/test", "names": [f"mcp-e2e-{ts}"], "confirm": True})
+        r = await call(
+            session, "remove", {"directory": "/test", "names": [f"mcp-e2e-{ts}"], "confirm": True}
+        )
         check("remove cleanup", "deleted" in text(r).lower(), text(r)[:60])
         r = await call(session, "logout", {})
         check("logout", True, text(r)[:40])

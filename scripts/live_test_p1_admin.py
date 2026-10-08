@@ -51,14 +51,23 @@ async def main() -> None:
     data_dir = "/tmp"  # existing host dir; Local root_folder_path must exist
     mount = f"/mcp-p1-{ts}"
 
-    r1 = t["create_storage"](mount, "Local", addition=json.dumps({"root_folder_path": data_dir}),
-                             remark="p1-live-test", confirm=True)
+    r1 = t["create_storage"](
+        mount,
+        "Local",
+        addition=json.dumps({"root_folder_path": data_dir}),
+        remark="p1-live-test",
+        confirm=True,
+    )
     out = await r1
     check("create_storage", "Storage created" in out, out[:80])
 
     lst = await t["list_storages"]()
     lnames = [s.get("mount_path") for s in (json.loads(lst) or {}).get("content", [])]
-    check("list_storages shows new mount", any(mount == n or n and n.startswith("/mcp-p1-") for n in lnames), str(lnames))
+    check(
+        "list_storages shows new mount",
+        any(mount == n or n and n.startswith("/mcp-p1-") for n in lnames),
+        str(lnames),
+    )
 
     # find the created storage id
     sid = None
@@ -71,7 +80,11 @@ async def main() -> None:
         up = await t["update_storage"](sid, remark="p1-updated", confirm=True)
         check("update_storage", "Storage updated" in up, up[:80])
         gi = json.loads(await t["get_storage_info"](sid))
-        check("update persisted remark", (gi or {}).get("remark") == "p1-updated", str((gi or {}).get("remark")))
+        check(
+            "update persisted remark",
+            (gi or {}).get("remark") == "p1-updated",
+            str((gi or {}).get("remark")),
+        )
         dis = await t["disable_storage"](sid, confirm=True)
         check("disable_storage", "disabled" in dis, dis[:70])
         en = await t["enable_storage"](sid, confirm=True)
@@ -82,22 +95,31 @@ async def main() -> None:
         gone = all((s.get("mount_path") or "") != mount for s in (lst2 or {}).get("content", []))
         check("storage removed from list", gone)
 
-
     # ── 2. driver config: backup → set → verify → restore ───────────────
     # aria2 settings are stored under aria2_uri / aria2_secret (conf keys),
     # not under a single "aria2" key.
     async def _aria2_state():
         try:
-            return {"uri": json.loads(await t["get_setting"]("aria2_uri")).get("value"),
-                    "secret": json.loads(await t["get_setting"]("aria2_secret")).get("value")}
+            return {
+                "uri": json.loads(await t["get_setting"]("aria2_uri")).get("value"),
+                "secret": json.loads(await t["get_setting"]("aria2_secret")).get("value"),
+            }
         except Exception:  # noqa: BLE001
             return None  # no existing config
 
     aria2_before = await _aria2_state()
     set_out = await t["set_aria2"]("http://127.0.0.1:6800/jsonrpc", "p1-token", confirm=True)
-    check("set_aria2 (config write)", "saved" in set_out or "configured" in set_out or "aria2" in set_out, set_out[:100])
+    check(
+        "set_aria2 (config write)",
+        "saved" in set_out or "configured" in set_out or "aria2" in set_out,
+        set_out[:100],
+    )
     post = await _aria2_state()
-    check("aria2 config persisted", bool(post and post["uri"] == "http://127.0.0.1:6800/jsonrpc"), str(post)[:90])
+    check(
+        "aria2 config persisted",
+        bool(post and post["uri"] == "http://127.0.0.1:6800/jsonrpc"),
+        str(post)[:90],
+    )
     # restore
     if aria2_before is None:
         for key in ("aria2_uri", "aria2_secret"):
@@ -132,15 +154,30 @@ async def main() -> None:
     check("created user has id", bool(uid), str(uid))
     if uid:
         gu = json.loads(await t["get_user"](uid))
-        check("get_user new user", (gu or {}).get("username") == uname, str((gu or {}).get("username")))
+        check(
+            "get_user new user",
+            (gu or {}).get("username") == uname,
+            str((gu or {}).get("username")),
+        )
         uu = await t["update_user"](uid, disabled=True, confirm=True)
         check("update_user (disable)", "User updated" in uu, uu[:70])
         gu2 = json.loads(await t["get_user"](uid))
-        check("disable persisted", (gu2 or {}).get("disabled") is True, str((gu2 or {}).get("disabled")))
+        check(
+            "disable persisted",
+            (gu2 or {}).get("disabled") is True,
+            str((gu2 or {}).get("disabled")),
+        )
         # cleanup via raw API (delete tool not in P1 scope)
         await raw.request("POST", "admin/user/delete", params={"id": uid})
         ul2 = json.loads(await t["list_users"]())
-        check("test user removed", all(u.get("username") != uname for u in (ul2 or {}).get("content", []) if isinstance(u, dict)))
+        check(
+            "test user removed",
+            all(
+                u.get("username") != uname
+                for u in (ul2 or {}).get("content", [])
+                if isinstance(u, dict)
+            ),
+        )
 
     await raw.close()
     print("\n===== P1 LIVE SUMMARY =====")

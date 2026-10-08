@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import contextlib
 import hashlib
 import json
 import os
@@ -55,17 +56,29 @@ async def main() -> None:
 
     # ── 1. single-chunk small file via the real tool ─────────────────────
     small = b"hello multipart on v4.2.5" * 3
-    out = parse(await tools["upload_file_multipart"](
-        path=base, file_name="small.txt", file_content_base64=base64.b64encode(small).decode(),
-        chunk_size=8, overwrite=True))
+    out = parse(
+        await tools["upload_file_multipart"](
+            path=base,
+            file_name="small.txt",
+            file_content_base64=base64.b64encode(small).decode(),
+            chunk_size=8,
+            overwrite=True,
+        )
+    )
     check("upload_file_multipart small (1 chunk)", out.get("ok") is True, str(out)[:140])
 
     # ── 2. multi-chunk large file (25 MiB, 8 MiB chunks → 4 chunks) ──────
     big = os.urandom(25 * 1024 * 1024)
     b64 = base64.b64encode(big).decode()
-    out = parse(await tools["upload_file_multipart"](
-        path=base, file_name="big.bin", file_content_base64=b64,
-        chunk_size=8 * 1024 * 1024, overwrite=True))
+    out = parse(
+        await tools["upload_file_multipart"](
+            path=base,
+            file_name="big.bin",
+            file_content_base64=b64,
+            chunk_size=8 * 1024 * 1024,
+            overwrite=True,
+        )
+    )
     ok = out.get("ok") is True and out.get("total_chunks") == 4 and out.get("chunks_sent") == 4
     check("upload_file_multipart big 25MiB/4 chunks", ok, str(out)[:200])
 
@@ -78,55 +91,92 @@ async def main() -> None:
     url = (raw or {}).get("raw_url", "")
     if url:
         import httpx
+
         async with httpx.AsyncClient(follow_redirects=True, timeout=120) as hc:
             resp = await hc.get(url)
-        check("big.bin content md5 match", hashlib.md5(resp.content).hexdigest() == hashlib.md5(big).hexdigest(),
-              f"downloaded {len(resp.content)}B")
+        check(
+            "big.bin content md5 match",
+            hashlib.md5(resp.content).hexdigest() == hashlib.md5(big).hexdigest(),
+            f"downloaded {len(resp.content)}B",
+        )
 
     # ── 3. resume: init → upload chunk 0 only → re-init same path/size ───
     mid = os.urandom(6 * 1024 * 1024)  # 2 chunks @ 4MiB
     target = f"{base}/resume.bin"
-    init1 = await c.multipart_init(file_path=target, file_size=len(mid), chunk_size=4 * 1024 * 1024,
-                                   overwrite=True, file_md5=hashlib.md5(mid).hexdigest())
+    init1 = await c.multipart_init(
+        file_path=target,
+        file_size=len(mid),
+        chunk_size=4 * 1024 * 1024,
+        overwrite=True,
+        file_md5=hashlib.md5(mid).hexdigest(),
+    )
     up1 = init1.get("upload_id", "")
     await c.multipart_chunk(up1, 0, mid[: 4 * 1024 * 1024])
     st = await c.multipart_status(upload_id=up1)
     recv = st.get("received") if st else None
-    check("partial upload received [[0,0]]", recv == [[0, 0]] or (isinstance(recv, list) and recv and recv[0] == [0, 0]), str(recv))
+    check(
+        "partial upload received [[0,0]]",
+        recv == [[0, 0]] or (isinstance(recv, list) and recv and recv[0] == [0, 0]),
+        str(recv),
+    )
 
     # resume with the same target → server must hand back the SAME session and
     # the tool then skips already-received chunks (md5 identity proof required).
-    out = parse(await tools["upload_file_multipart"](
-        path=base, file_name="resume.bin", file_content_base64=base64.b64encode(mid).decode(),
-        chunk_size=4 * 1024 * 1024, overwrite=True))
+    out = parse(
+        await tools["upload_file_multipart"](
+            path=base,
+            file_name="resume.bin",
+            file_content_base64=base64.b64encode(mid).decode(),
+            chunk_size=4 * 1024 * 1024,
+            overwrite=True,
+        )
+    )
     same_session = out.get("upload_id") == up1  # server handed back the SAME session
-    check("resume reuses session + skips chunk 0",
-          out.get("ok") is True and same_session and out.get("chunks_sent") == 2,
-          f"session_reused={same_session} {str(out)[:140]}")
+    check(
+        "resume reuses session + skips chunk 0",
+        out.get("ok") is True and same_session and out.get("chunks_sent") == 2,
+        f"session_reused={same_session} {str(out)[:140]}",
+    )
     info2 = await c.request("POST", "fs/get", json={"path": target})
-    check("resume.bin final size", (info2 or {}).get("size") == len(mid), f"server={(info2 or {}).get('size')}")
+    check(
+        "resume.bin final size",
+        (info2 or {}).get("size") == len(mid),
+        f"server={(info2 or {}).get('size')}",
+    )
 
     # ── 4. status & abort on a fresh session ─────────────────────────────
-    init2 = await c.multipart_init(file_path=f"{base}/abort.bin", file_size=1000, chunk_size=1024, overwrite=True)
-    ab = parse(await tools["multipart_abort_upload"](upload_id=init2.get("upload_id", ""), confirm=True))
+    init2 = await c.multipart_init(
+        file_path=f"{base}/abort.bin", file_size=1000, chunk_size=1024, overwrite=True
+    )
+    ab = parse(
+        await tools["multipart_abort_upload"](upload_id=init2.get("upload_id", ""), confirm=True)
+    )
     check("multipart_abort_upload", "aborted" in str(ab).lower(), str(ab)[:120])
     try:
         await c.multipart_status(upload_id=init2.get("upload_id", ""))
         check("status after abort (session gone)", False, "still returned a session")
     except OpenListError as exc:
-        check("status after abort (session gone)", "not found" in exc.message.lower() or exc.code in (404, 500), f"{exc.code} {exc.message[:80]}")
+        check(
+            "status after abort (session gone)",
+            "not found" in exc.message.lower() or exc.code in (404, 500),
+            f"{exc.code} {exc.message[:80]}",
+        )
 
     # A completed session is gone server-side (path+size query then 404s), so
     # validate path+size lookup against an in-progress session instead.
-    init3 = await c.multipart_init(file_path=f"{base}/query.bin", file_size=len(small),
-                                   chunk_size=1024, overwrite=True)
-    st2 = parse(await tools["multipart_upload_status"](path=f"{base}/query.bin", file_size=len(small)))
-    check("multipart_upload_status by path (in-progress session)",
-          st2 is not None and isinstance(st2, dict), str(st2)[:120])
-    try:
+    init3 = await c.multipart_init(
+        file_path=f"{base}/query.bin", file_size=len(small), chunk_size=1024, overwrite=True
+    )
+    st2 = parse(
+        await tools["multipart_upload_status"](path=f"{base}/query.bin", file_size=len(small))
+    )
+    check(
+        "multipart_upload_status by path (in-progress session)",
+        st2 is not None and isinstance(st2, dict),
+        str(st2)[:120],
+    )
+    with contextlib.suppress(Exception):
         await c.multipart_abort(init3.get("upload_id", ""))
-    except Exception:  # noqa: BLE001
-        pass
 
     # ── cleanup ──────────────────────────────────────────────────────────
     await c.request("POST", "fs/remove", json={"dir": "/test", "names": [f"mcp-mp-{ts}"]})
