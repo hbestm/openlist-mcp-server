@@ -118,11 +118,11 @@ point them at.
 export OPENLIST_URL=http://host:5244 OPENLIST_USERNAME=admin \
        OPENLIST_PASSWORD=... OPENLIST_ALLOW_HTTP=true \
        OPENLIST_TEST_DIR=/scratch/mcp
-python scripts/fulltest_capabilities.py  # broad sweep — fs, shares, tasks, admin, archives, torrents, re-login
-python scripts/fulltest_mcp_tools.py     # 60 checks — every tool group, real payloads
+python scripts/fulltest_capabilities.py  # 64 checks — fs, shares, tasks, admin, archives, torrents, re-login
+python scripts/fulltest_mcp_tools.py     # 62 checks — every tool group, real payloads
 python scripts/fulltest_stability.py     # 16 checks — repeats, concurrency, bad inputs, re-auth
 python scripts/fulltest_mcp_e2e.py       # 22 checks — full MCP protocol over stdio
-python scripts/live_test_multipart.py    # 9 checks — resumable multipart upload (v4.2.5+)
+python scripts/live_test_multipart.py    # 10 checks — resumable multipart upload (v4.2.5+)
 python scripts/live_test_p1_admin.py     # 21 checks — storage CRUD, driver configs, user write
 # safety gates (subprocess envs):
 OPENLIST_READONLY=true TEST_MODE=readonly python scripts/fulltest_safety_gates.py
@@ -135,8 +135,17 @@ OPENLIST_ALLOWED_PATHS="$OPENLIST_TEST_DIR" OPENLIST_BLOCKED_PATH=/elsewhere \
 aimed at, never written to — every operation against it has to fail before
 reaching the server.
 
-Reference results on OpenList v4.2.5 (cc87e88): 60/60, 16/16, 22/22, 13/13,
-9/9 (multipart) and 21/21 (P1 admin) — all green.
+Reference results on OpenList v4.2.5 (cc87e88): 64/64, 62/62, 16/16, 22/22,
+13/13 (gates: 8 readonly + 5 allowed-paths), 10/10 (multipart) and 21/21
+(P1 admin) — all green, with 3 checks skipped.
+
+Those skips are deployment-dependent rather than failures, and each one names
+its reason: `fs/recursive_move` is not implemented by OpenList v4.2.x (the MCP
+tool falls back to move+rename, which `fulltest_mcp_tools.py` exercises at the
+tool level), a server with `multipart_enabled` accepts the multipart init that
+older releases rejected, and a driver that finishes uploads inline never reports
+an upload task id. Run on a v4.2.2 box or against an SFTP mount and those three
+turn into real checks again.
 
 `live_test_p1_admin.py` exercises the v0.5.0 admin-write tools with fully
 reversible changes: it creates a temporary `Local` storage mounted on
