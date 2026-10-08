@@ -133,13 +133,13 @@ python scripts/live_integration.py
 2. 跑发布脚本：
 
    ```bash
-   python scripts/release.py 0.8.0 --yes --token-file ../.gh_token
+   python scripts/release.py 0.8.0 --yes
    ```
 
    它会依次：升 `pyproject.toml` → 重新生成文档 → 跑门禁（红就停）→ 提交并推 `main` → **单独**推这一个 tag → 等 Release 工作流完成 → 用 CHANGELOG 内容替换自动生成的发布说明 → 校验 whl 与 sdist 都已挂上；
    并顺带列出**遗留的草稿 release**（草稿不占用 tag，GitHub 会把它挂在 `untagged-…` 这种占位地址下，长期留在发布列表里像出了故障）。
 
-   不加 `--yes` 时只打印计划，不改动任何东西；`--token-file` 省略则跳过需要 GitHub API 的那两步。
+   不加 `--yes` 时只打印计划，不改动任何东西。GitHub API 那两步需要的 token，默认从 **git 凭据存储自动读取**（`git config --global credential.helper store` 配一次即可），也可以用 `--token-file` 显式指定；两者都没有时这两步会被跳过并明确提示。
 
 **两个手工发布时踩过的坑，脚本已替你避开：**
 

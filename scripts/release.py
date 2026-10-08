@@ -22,7 +22,10 @@ CHANGELOG does not describe, then:
 Without `--yes` it prints the plan and changes nothing.
 
     python scripts/release.py 0.7.2                      # show the plan
-    python scripts/release.py 0.7.2 --yes --token-file ../.gh_token
+    python scripts/release.py 0.7.2 --yes
+
+The GitHub API steps need a token: it is read from `--token-file` when given, and
+otherwise from whatever `credential.helper` git is already configured with.
 """
 
 from __future__ import annotations
@@ -95,6 +98,25 @@ def api(token: str, url: str, *, method: str = "GET", payload: dict | None = Non
             return error.code, {}
 
 
+def token_from_git() -> str | None:
+    """The token git itself would use for github.com, if a helper holds one.
+
+    `--token-file` stays the explicit way to point at a token, but an environment
+    that has already configured `credential.helper` should not have to repeat it.
+    """
+    result = subprocess.run(
+        ["git", "credential", "fill"],
+        input="protocol=https\nhost=github.com\n\n",
+        capture_output=True,
+        text=True,
+        cwd=ROOT,
+    )
+    if result.returncode != 0:
+        return None
+    match = re.search(r"^password=(.+)$", result.stdout, re.M)
+    return match.group(1).strip() if match else None
+
+
 def report_leftover_drafts(token: str) -> None:
     """Flag stale draft releases before adding another release to the pile.
 
@@ -154,14 +176,19 @@ def main() -> int:
         )
     print(f"  changelog entry : {len(body)} characters")
 
-    token = None
     if args.token_file is not None:
         if not args.token_file.is_file():
             raise SystemExit(f"  ✗ token file not found: {args.token_file}")
         token = args.token_file.read_text().strip()
+        print("  token           : from --token-file")
+    else:
+        token = token_from_git()
+        print(f"  token           : {'from the git credential store' if token else 'none found'}")
+
     if token is None:
-        print("  note: no --token-file, so the tag can be pushed but the release notes")
-        print("        cannot be finished; git will use its own credentials.")
+        print("  note: without a token the tag can still be pushed, but the release notes")
+        print("        and the artifact check are skipped. Pass --token-file, or configure")
+        print("        `git config --global credential.helper store` once.")
     else:
         report_leftover_drafts(token)
 
