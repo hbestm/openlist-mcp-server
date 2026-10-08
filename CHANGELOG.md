@@ -6,6 +6,36 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.7.1] — 2026-10-08
+
+### Fixed
+- **The tool tables were incomplete.** Both READMEs header their reference with
+  "110 tools in total" and then listed 87: the twenty admin write tools added in
+  v0.5.0 (storage CRUD, the twelve offline-download client configurators, user
+  write) and the three metadata tools added in v0.7.0 had never been added to the
+  tables. Both now list all 110, matching `SKILL_GROUP_TOOLS`.
+- **The multipart caveat was wrong**, in both READMEs and
+  `docs/api-compatibility.md`: it said the API needs "master after v4.2.5".
+  v4.2.5 ships it — the v0.4.1 entry already recorded that note as superseded —
+  and the live suites exercise it on v4.2.5 and v4.2.6. Now stated as v4.2.5+
+  gated by the `multipart_enabled` setting.
+- `AI_GUIDE.md` scoped the `fs/recursive_move` failure to v4.2.2, but the
+  endpoint returns 500 across the v4.2.x line, v4.2.6 included. Narrowed to
+  v4.2.x and marked as verified through v4.2.6.
+
+### Added
+- `docs/api-compatibility.md` documents the metadata endpoints, including the two
+  details that shaped their implementation: `admin/meta/update` replaces the whole
+  record, so the tool reads and merges, and `admin/meta/delete` reads its id from
+  the query string. The closing "when adding a new tool" checklist gained the
+  matching step, since that is the mistake it exists to prevent.
+
+### Notes
+- No code changes. This release exists because v0.7.0 was tagged before the
+  documentation fixes landed, so its sdist shipped the older README; v0.7.1
+  carries the corrected documentation into the build artifacts.
+
+
 ## [0.7.0] — 2026-10-08
 
 ### Added
@@ -541,6 +571,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.7.1 | 2026-10-08 | Documentation only: README tool tables completed (87 → 110), the superseded "master after v4.2.5" multipart claim corrected |
 | 0.7.0 | 2026-10-08 | Directory metadata write (`create_meta` / `update_meta` / `delete_meta`); 110 tools |
 | 0.6.0 | 2026-10-07 | Dual mcp support (1.x and 2.x) via `_compat` import shim, `mcp` range widened to `<3.0.0`, upstream mcp 2.0 migration merged |
 | 0.5.0 | 2026-08-16 | 107 tools: admin write for storages, offline-download clients and users; `delete_setting` query-param fix; runtime-derived banner counts |
