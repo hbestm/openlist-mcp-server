@@ -5,7 +5,7 @@ Set environment variables before running:
     export OPENLIST_URL="https://your-openlist.example.com"
     export OPENLIST_USERNAME="your_username"
     export OPENLIST_PASSWORD="your_password"
-    export OPENLIST_TEST_DIR="/tv"  # optional, defaults to /
+    export OPENLIST_TEST_DIR="/scratch/mcp"  # required: a disposable directory inside a writable mount
 """
 
 import asyncio
@@ -14,9 +14,16 @@ import time
 
 from openlist_mcp.client import OpenListError, get_client
 
-TEST_DIR = os.environ.get("OPENLIST_TEST_DIR", "/")
+# Required, not defaulted: this smoke test creates and deletes a folder, so an
+# unset target would write to the server root.
+TEST_DIR = os.environ.get("OPENLIST_TEST_DIR", "").strip().rstrip("/")
+if not TEST_DIR:
+    raise SystemExit(
+        "OPENLIST_TEST_DIR is required: point it at a disposable directory inside a "
+        "writable mount, e.g. OPENLIST_TEST_DIR=/scratch/mcp (the server root is refused)."
+    )
 TEST_FOLDER = f"mcp-test-{int(time.time())}"
-TEST_PATH = f"{TEST_DIR.rstrip('/')}/{TEST_FOLDER}" if TEST_DIR != "/" else f"/{TEST_FOLDER}"
+TEST_PATH = f"{TEST_DIR}/{TEST_FOLDER}"
 
 
 class Colors:

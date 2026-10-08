@@ -1,7 +1,7 @@
 """Stability & robustness tests against the live OpenList (confined to /test)."""
 
 import asyncio
-import contextlib
+import os
 import sys
 import time
 from pathlib import Path
@@ -9,6 +9,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from openlist_mcp.client import OpenListClient  # noqa: E402
+
+# A disposable directory inside a writable mount. Required, not defaulted:
+# these suites create and delete files, so guessing a target would risk real data.
+TEST_DIR = os.environ.get("OPENLIST_TEST_DIR", "").strip().rstrip("/")
+if not TEST_DIR:
+    raise SystemExit(
+        "OPENLIST_TEST_DIR is required: point it at a disposable directory inside a "
+        "writable mount, e.g. OPENLIST_TEST_DIR=/scratch/mcp (the server root is refused)."
+    )
 
 PASS: list[str] = []
 FAIL: list[str] = []
@@ -22,7 +31,7 @@ def check(name: str, ok: bool, detail: str = "") -> None:
 async def main() -> None:
     c = OpenListClient()
     await c.login()
-    base = f"/test/mcp-stab-{int(time.time())}"
+    base = f"{TEST_DIR}/mcp-stab-{int(time.time())}"
     await c.request("POST", "fs/mkdir", json={"path": base})
     await c.upload(path=base, file_content=b"stability" * 100, file_name="s.txt", as_task=False)
 
@@ -52,7 +61,9 @@ async def main() -> None:
             return await c.request("POST", "fs/get", json={"path": f"{base}/s.txt"})
         if i % 3 == 1:
             return await c.request("POST", "fs/dirs", json={"path": base})
-        return await c.request("POST", "fs/list", json={"path": "/test", "page": 1, "per_page": 30})
+        return await c.request(
+            "POST", "fs/list", json={"path": TEST_DIR, "page": 1, "per_page": 30}
+        )
 
     results = await asyncio.gather(*(mixed(i) for i in range(15)), return_exceptions=True)
     errs = [r for r in results if isinstance(r, BaseException)]
@@ -66,7 +77,7 @@ async def main() -> None:
         ),
         (
             "traversal path get",
-            lambda: c.request("POST", "fs/get", json={"path": "/test/../../etc/passwd"}),
+            lambda: c.request("POST", "fs/get", json={"path": f"{TEST_DIR}/../../etc/passwd"}),
         ),
         (
             "per_page=0",
@@ -82,7 +93,7 @@ async def main() -> None:
         ),
         (
             "nested traversal remove",
-            lambda: c.request("POST", "fs/remove", json={"dir": "/test", "names": ["../x"]}),
+            lambda: c.request("POST", "fs/remove", json={"dir": TEST_DIR, "names": ["../x"]}),
         ),
         (
             "nonexistent share get",
@@ -131,15 +142,15 @@ async def main() -> None:
 
     # 8. large listing (mount-wide) stays within sane time
     t0 = time.perf_counter()
-    await c.request("POST", "fs/list", json={"path": "/test", "page": 1, "per_page": 500})
+    await c.request("POST", "fs/list", json={"path": TEST_DIR, "page": 1, "per_page": 500})
     dt = time.perf_counter() - t0
     check("mount-wide list /test (500/page)", dt < 10, f"{dt:.2f}s")
 
-    # 9. cleanup
-    await c.request("POST", "fs/remove", json={"dir": "/test", "names": [base.split("/")[-1]]})
-    # 10. clear leftover copy tasks from earlier sweeps to leave server tidy
-    with contextlib.suppress(Exception):
-        await c.request("POST", "task/copy/clear_done")
+    # 9. cleanup: remove only what this run created. A server-wide clear_done is
+    # deliberately not called — it deletes the completed-copy-task records of every
+    # other task on the instance, which is outside the "writes stay in TEST_DIR"
+    # contract this suite (and its documentation) promise.
+    await c.request("POST", "fs/remove", json={"dir": TEST_DIR, "names": [base.split("/")[-1]]})
     await c.close()
 
     print("\n===== STABILITY SUMMARY =====")

@@ -1,4 +1,12 @@
-"""Live multipart upload tests against OpenList v4.2.5+ (confined to /test)."""
+"""Live multipart upload tests against OpenList v4.2.5+.
+
+Every write goes into a timestamped subtree of OPENLIST_TEST_DIR, which is
+removed at the end.
+
+Usage:
+    OPENLIST_URL=.. OPENLIST_USERNAME=.. OPENLIST_PASSWORD=.. OPENLIST_TEST_DIR=/scratch/mcp \
+        python scripts/live_test_multipart.py
+"""
 
 import asyncio
 import base64
@@ -14,6 +22,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from openlist_mcp.client import OpenListClient, OpenListError  # noqa: E402
 from openlist_mcp.tools.transfer import register_transfer_tools  # noqa: E402
+
+# A disposable directory inside a writable mount. Required, not defaulted: this
+# suite creates and deletes files, so guessing a target would risk real data.
+TEST_DIR = os.environ.get("OPENLIST_TEST_DIR", "").strip().rstrip("/")
+if not TEST_DIR:
+    raise SystemExit(
+        "OPENLIST_TEST_DIR is required: point it at a disposable directory inside a "
+        "writable mount, e.g. OPENLIST_TEST_DIR=/scratch/mcp (the server root is refused)."
+    )
 
 PASS: list[str] = []
 FAIL: list[str] = []
@@ -51,7 +68,7 @@ async def main() -> None:
     c = OpenListClient()
     await c.login()
     ts = int(time.time())
-    base = f"/test/mcp-mp-{ts}"
+    base = f"{TEST_DIR}/mcp-mp-{ts}"
     await c.request("POST", "fs/mkdir", json={"path": base})
 
     # ── 1. single-chunk small file via the real tool ─────────────────────
@@ -179,7 +196,7 @@ async def main() -> None:
         await c.multipart_abort(init3.get("upload_id", ""))
 
     # ── cleanup ──────────────────────────────────────────────────────────
-    await c.request("POST", "fs/remove", json={"dir": "/test", "names": [f"mcp-mp-{ts}"]})
+    await c.request("POST", "fs/remove", json={"dir": TEST_DIR, "names": [f"mcp-mp-{ts}"]})
     await c.close()
 
     print("\n===== MULTIPART LIVE SUMMARY =====")

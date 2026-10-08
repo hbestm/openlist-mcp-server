@@ -7,6 +7,7 @@ and a test user is created/updated/removed via the raw API.
 
 import asyncio
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -15,6 +16,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from openlist_mcp.client import OpenListClient  # noqa: E402
 from openlist_mcp.tools.admin import register_admin_tools  # noqa: E402
+
+# A disposable directory inside a writable mount. Required, not defaulted:
+# these suites create and delete files, so guessing a target would risk real data.
+TEST_DIR = os.environ.get("OPENLIST_TEST_DIR", "").strip().rstrip("/")
+if not TEST_DIR:
+    raise SystemExit(
+        "OPENLIST_TEST_DIR is required: point it at a disposable directory inside a "
+        "writable mount, e.g. OPENLIST_TEST_DIR=/scratch/mcp (the server root is refused)."
+    )
 
 PASS: list[str] = []
 FAIL: list[str] = []
@@ -144,7 +154,7 @@ async def main() -> None:
 
     # ── 3. user create/update, cleaned via raw API ───────────────────────
     uname = f"mcp_p1_{ts}"
-    cu = await t["create_user"](uname, password="P1Test123!", base_path="/test", confirm=True)
+    cu = await t["create_user"](uname, password="P1Test123!", base_path=TEST_DIR, confirm=True)
     check("create_user", "User created" in cu, cu[:80])
     ul = json.loads(await t["list_users"]())
     uid = None

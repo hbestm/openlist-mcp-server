@@ -25,8 +25,11 @@ $env:OPENLIST_PASSWORD = "your_password"
 $env:OPENLIST_TEST_DIR = "/mcp-dev-test"
 ```
 
-Use a dedicated test directory when possible. Avoid running live write tests against `/`
-or against user data directories.
+Use a dedicated test directory. The write suites (`fulltest_*`, `live_test_*`)
+require `OPENLIST_TEST_DIR` and refuse to start without it — they create and
+delete a timestamped subtree there and nowhere else, so pointing them at `/` or
+at user data would destroy real files. Point it inside an existing writable
+mount, e.g. `/scratch/mcp` on a scratch storage.
 
 ## Scripts
 
@@ -104,14 +107,18 @@ with the minimum OpenList permissions required for the scenario.
 
 The repository ships ready-to-run live suites that drive the *real* MCP tool
 functions (and, for the e2e script, the actual stdio server) against a live
-OpenList. All writes are confined to a timestamped subtree under `/test`
-(or any mount you point the scripts at) and removed afterwards; global admin
-destructives (index build/clear, `reset_api_token`, `clear_*` on other users'
-data, `save_settings`) are deliberately not executed.
+OpenList. All writes are confined to a timestamped subtree under
+`OPENLIST_TEST_DIR` and removed afterwards; global admin destructives (index
+build/clear, `reset_api_token`, `clear_*` on other users' data,
+`save_settings`) are deliberately not executed. Nothing is hard-coded to a
+particular mount, so the suites run against whatever scratch directory you
+point them at.
 
 ```bash
 export OPENLIST_URL=http://host:5244 OPENLIST_USERNAME=admin \
-       OPENLIST_PASSWORD=... OPENLIST_ALLOW_HTTP=true
+       OPENLIST_PASSWORD=... OPENLIST_ALLOW_HTTP=true \
+       OPENLIST_TEST_DIR=/scratch/mcp
+python scripts/fulltest_capabilities.py  # broad sweep — fs, shares, tasks, admin, archives, torrents, re-login
 python scripts/fulltest_mcp_tools.py     # 60 checks — every tool group, real payloads
 python scripts/fulltest_stability.py     # 16 checks — repeats, concurrency, bad inputs, re-auth
 python scripts/fulltest_mcp_e2e.py       # 22 checks — full MCP protocol over stdio
@@ -119,8 +126,14 @@ python scripts/live_test_multipart.py    # 9 checks — resumable multipart uplo
 python scripts/live_test_p1_admin.py     # 21 checks — storage CRUD, driver configs, user write
 # safety gates (subprocess envs):
 OPENLIST_READONLY=true TEST_MODE=readonly python scripts/fulltest_safety_gates.py
-OPENLIST_ALLOWED_PATHS=/test TEST_MODE=allowed_paths python scripts/fulltest_safety_gates.py
+OPENLIST_ALLOWED_PATHS="$OPENLIST_TEST_DIR" OPENLIST_BLOCKED_PATH=/elsewhere \
+    TEST_MODE=allowed_paths python scripts/fulltest_safety_gates.py
 ```
+
+`fulltest_safety_gates.py` needs a second path in `allowed_paths` mode:
+`OPENLIST_BLOCKED_PATH`, a location the allowlist must reject. It is only ever
+aimed at, never written to — every operation against it has to fail before
+reaching the server.
 
 Reference results on OpenList v4.2.5 (cc87e88): 60/60, 16/16, 22/22, 13/13,
 9/9 (multipart) and 21/21 (P1 admin) — all green.

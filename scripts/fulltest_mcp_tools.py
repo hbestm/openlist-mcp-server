@@ -11,6 +11,7 @@ Usage:
 
 import asyncio
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -24,6 +25,15 @@ from openlist_mcp.tools.fs import register_fs_tools  # noqa: E402
 from openlist_mcp.tools.share import register_share_tools  # noqa: E402
 from openlist_mcp.tools.task import register_task_tools  # noqa: E402
 from openlist_mcp.tools.transfer import register_transfer_tools  # noqa: E402
+
+# A disposable directory inside a writable mount. Required, not defaulted:
+# these suites create and delete files, so guessing a target would risk real data.
+TEST_DIR = os.environ.get("OPENLIST_TEST_DIR", "").strip().rstrip("/")
+if not TEST_DIR:
+    raise SystemExit(
+        "OPENLIST_TEST_DIR is required: point it at a disposable directory inside a "
+        "writable mount, e.g. OPENLIST_TEST_DIR=/scratch/mcp (the server root is refused)."
+    )
 
 PASS: list[str] = []
 FAIL: list[str] = []
@@ -84,7 +94,7 @@ async def safe(tool, label: str, **kwargs):
 async def main() -> None:
     tools = register_all()
     ts = int(time.time())
-    base = f"/test/mcp-tools-{ts}"
+    base = f"{TEST_DIR}/mcp-tools-{ts}"
 
     # ── auth / public ────────────────────────────────────────────────────
     r = parse(await safe(tools["login"], "login"))
@@ -287,11 +297,31 @@ async def main() -> None:
 
     # ── admin (safe subset) ──────────────────────────────────────────────
     r = parse(await safe(tools["list_storages"], "list_storages"))
-    check(
-        "list_storages (2 mounts)", len(r.get("content", [])) == 2, str(len(r.get("content", [])))
+    mounts = r.get("content", [])
+    check("list_storages", len(mounts) >= 1, str(len(mounts)))
+    # Resolve the mount that owns TEST_DIR rather than assuming an id and a name:
+    # TEST_DIR may be a mount root, or a subdirectory of one.
+    owner = max(
+        (
+            m
+            for m in mounts
+            if m.get("mount_path") == TEST_DIR
+            or TEST_DIR.startswith(str(m.get("mount_path", "/")).rstrip("/") + "/")
+        ),
+        key=lambda m: len(str(m.get("mount_path", ""))),
+        default=None,
     )
-    r = parse(await safe(tools["get_storage_info"], "get_storage_info", storage_id=2))
-    check("get_storage_info(2)", r.get("mount_path") == "/test", str(r.get("mount_path")))
+    check("test dir sits on a storage", owner is not None, TEST_DIR)
+    r = parse(
+        await safe(
+            tools["get_storage_info"], "get_storage_info", storage_id=(owner or {}).get("id")
+        )
+    )
+    check(
+        "get_storage_info",
+        r.get("mount_path") == (owner or {}).get("mount_path"),
+        str(r.get("mount_path")),
+    )
     r = parse(await safe(tools["list_drivers"], "list_drivers"))
     check("list_drivers", len(r) > 0, str(list(r)[:3]))
     r = parse(await safe(tools["get_driver_info"], "get_driver_info", driver="Local"))
@@ -312,7 +342,7 @@ async def main() -> None:
     check("get_meta(0, graceful err)", "record not found" in str(r), str(r)[:70])
 
     r = parse(
-        await safe(tools["start_manual_scan"], "start_manual_scan", path="/test", confirm=True)
+        await safe(tools["start_manual_scan"], "start_manual_scan", path=TEST_DIR, confirm=True)
     )
     check("start_manual_scan", ok(r.get("_text", ""), "started"), r.get("_text", "")[:70])
     r = parse(await safe(tools["get_manual_scan_progress"], "get_manual_scan_progress"))
@@ -364,7 +394,7 @@ async def main() -> None:
 
     r = parse(
         await safe(
-            tools["remove"], "remove", directory="/test", names=[f"mcp-tools-{ts}"], confirm=True
+            tools["remove"], "remove", directory=TEST_DIR, names=[f"mcp-tools-{ts}"], confirm=True
         )
     )
     check("cleanup base", ok(r.get("_text", ""), "deleted"), r.get("_text", "")[:70])

@@ -23,6 +23,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from mcp import ClientSession, StdioServerParameters  # noqa: E402
 from mcp.client.stdio import stdio_client  # noqa: E402
 
+# A disposable directory inside a writable mount. Required, not defaulted:
+# these suites create and delete files, so guessing a target would risk real data.
+TEST_DIR = os.environ.get("OPENLIST_TEST_DIR", "").strip().rstrip("/")
+if not TEST_DIR:
+    raise SystemExit(
+        "OPENLIST_TEST_DIR is required: point it at a disposable directory inside a "
+        "writable mount, e.g. OPENLIST_TEST_DIR=/scratch/mcp (the server root is refused)."
+    )
+
 PASS: list[str] = []
 FAIL: list[str] = []
 
@@ -65,7 +74,7 @@ async def main() -> None:
         command=sys.executable, args=["-m", "openlist_mcp.server"], env=env
     )
     ts = int(time.time())
-    base = f"/test/mcp-e2e-{ts}"
+    base = f"{TEST_DIR}/mcp-e2e-{ts}"
 
     async with AsyncExitStack() as stack:
         read, write = await stack.enter_async_context(stdio_client(server_params))
@@ -170,7 +179,7 @@ async def main() -> None:
         )
 
         # 6. manual scan via protocol
-        r = await call(session, "start_manual_scan", {"path": "/test", "confirm": True})
+        r = await call(session, "start_manual_scan", {"path": TEST_DIR, "confirm": True})
         check("start_manual_scan", "started" in text(r).lower(), text(r)[:60])
         r = await call(session, "get_manual_scan_progress", {})
         check("get_manual_scan_progress", "obj_count" in text(r), text(r)[:60])
@@ -183,7 +192,7 @@ async def main() -> None:
 
         # 7. cleanup + logout
         r = await call(
-            session, "remove", {"directory": "/test", "names": [f"mcp-e2e-{ts}"], "confirm": True}
+            session, "remove", {"directory": TEST_DIR, "names": [f"mcp-e2e-{ts}"], "confirm": True}
         )
         check("remove cleanup", "deleted" in text(r).lower(), text(r)[:60])
         r = await call(session, "logout", {})

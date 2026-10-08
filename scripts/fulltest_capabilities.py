@@ -1,12 +1,12 @@
 """Comprehensive capability sweep against the live OpenList instance.
 
-Everything is confined to /test (SFTP mount) and a timestamped subtree that is
-removed at the end. Global/destructive admin ops (index build/clear, reset
-token, clear_done/clear_succeeded/retry_failed, save_settings) are deliberately
-NOT executed — they affect the whole server.
+Every write is confined to a timestamped subtree of OPENLIST_TEST_DIR and removed
+at the end. Global/destructive admin ops (index build/clear, reset token,
+clear_done/clear_succeeded/retry_failed, save_settings) are deliberately NOT
+executed — they affect the whole server.
 
 Usage:
-    OPENLIST_URL=.. OPENLIST_USERNAME=.. OPENLIST_PASSWORD=.. OPENLIST_ALLOW_HTTP=true \
+    OPENLIST_URL=.. OPENLIST_USERNAME=.. OPENLIST_PASSWORD=.. OPENLIST_TEST_DIR=/scratch/mcp \
         python scripts/fulltest_capabilities.py
 """
 
@@ -23,6 +23,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from openlist_mcp.client import OpenListClient, OpenListError  # noqa: E402
+
+# A disposable directory inside a writable mount. Required, not defaulted:
+# this suite creates and deletes files, so guessing a target would risk real data.
+TEST_DIR = os.environ.get("OPENLIST_TEST_DIR", "").strip().rstrip("/")
+if not TEST_DIR:
+    raise SystemExit(
+        "OPENLIST_TEST_DIR is required: point it at a disposable directory inside a "
+        "writable mount, e.g. OPENLIST_TEST_DIR=/scratch/mcp (the server root is refused)."
+    )
 
 PASS: list[str] = []
 FAIL: list[str] = []
@@ -58,7 +67,7 @@ def clean(obj) -> dict:
 async def main() -> None:
     client = OpenListClient()
     ts = int(time.time())
-    base = f"/test/mcp-full-{ts}"
+    base = f"{TEST_DIR}/mcp-full-{ts}"
 
     # ── Setup ─────────────────────────────────────────────────────────────
     await client.login()
@@ -295,10 +304,23 @@ async def main() -> None:
         bool(st and st.get("content")),
         str(len((st or {}).get("content", []))),
     )
-    si = await safe(client, "GET", "admin/storage/get", params={"id": 2})
+    # Resolve the mount that owns TEST_DIR rather than assuming an id and a name:
+    # TEST_DIR may be a mount root, or a subdirectory of one.
+    owner = max(
+        (
+            m
+            for m in (st or {}).get("content", [])
+            if m.get("mount_path") == TEST_DIR
+            or TEST_DIR.startswith(str(m.get("mount_path", "/")).rstrip("/") + "/")
+        ),
+        key=lambda m: len(str(m.get("mount_path", ""))),
+        default=None,
+    )
+    check("test dir sits on a storage", owner is not None, TEST_DIR)
+    si = await safe(client, "GET", "admin/storage/get", params={"id": (owner or {}).get("id")})
     check(
-        "admin get_storage_info(2 /test)",
-        (si or {}).get("mount_path") == "/test",
+        "admin get_storage_info",
+        (si or {}).get("mount_path") == (owner or {}).get("mount_path"),
         str(clean(si or {}))[:80],
     )
     dn = await safe(client, "GET", "admin/driver/names")
@@ -331,7 +353,7 @@ async def main() -> None:
     ip = await safe(client, "GET", "admin/index/progress")
     check("admin/index/progress", ip is not None)
 
-    sc = await safe(client, "POST", "admin/scan/start", json={"path": "/test"})
+    sc = await safe(client, "POST", "admin/scan/start", json={"path": TEST_DIR})
     check("admin/scan/start /test", sc is not None)
     sp = await safe(client, "GET", "admin/scan/progress")
     check(
@@ -442,7 +464,9 @@ async def main() -> None:
     )
 
     # ── Cleanup ───────────────────────────────────────────────────────────
-    rm = await safe(client, "POST", "fs/remove", json={"dir": "/test", "names": [f"mcp-full-{ts}"]})
+    rm = await safe(
+        client, "POST", "fs/remove", json={"dir": TEST_DIR, "names": [f"mcp-full-{ts}"]}
+    )
     check("cleanup base dir", rm is not None)
     await client.close()
 
