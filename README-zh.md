@@ -74,8 +74,22 @@ export OPENLIST_ALLOWED_PATHS="/mcp-dev-test,/public"      # 限制可操作的�
 export OPENLIST_LOCAL_UPLOAD_ROOTS="/tmp:/允许的目录"      # 启用本地文件上传
 export OPENLIST_TOTP_SECRET="你的_totp_密钥"               # 自动生成 2FA 验证码
 export OPENLIST_ALLOW_HTTP="false"                         # 允许 HTTP（不安全，仅局域网使用）
-export OPENLIST_SKILLS="core"                              # 工具组: core(30个), default(49个), all(87个)
+export OPENLIST_SKILLS="core"                              # 工具组: core(30个), default(49个), all(110个)
 ```
+
+**工具档位怎么选。** 工具 schema 是**每一步模型请求都要常驻**的上下文，不是一次性的加载开销：
+
+| `OPENLIST_SKILLS` | 工具数 | ≈tokens/步 | 增加了什么 |
+|---|---|---|---|
+| `core`（默认） | 30 | ~4.4k | `auth`、`fs`、`transfer` —— 浏览、搜索、上传下载 |
+| `default` | 49 | ~6.5k | 再加 `task`、`share` |
+| `all` | 110 | ~14.7k | 再加 `admin`、`advanced` —— 服务器管理、压缩包、种子 |
+| 任意组名组合 | — | — | 例如 `fs,transfer,share`，从下表里挑 |
+
+**给 agent 用，`core` 或 `default` 是合适区间。** `fs/copy`、`fs/move`、`fs/archive/decompress` 在服务端是**异步任务**，没有 `task` 组 agent 就无法确认它们是否真的完成 —— 这就是 `default` 比 `core` 多花约 2k tokens 换来的东西。`all` 留给确实需要做服务器管理的场景（存储、用户、设置、元数据）。
+
+各组与规模：`auth`(6)、`fs`(16)、`transfer`(8)、`task`(11)、`share`(8)、`admin`(42)、`advanced`(16)。用逗号组合；不属于这 7 个的名字会被**忽略并告警**，而不是让启动失败。
+
 
 ### 3. 验证
 

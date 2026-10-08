@@ -77,6 +77,28 @@ export OPENLIST_ALLOW_HTTP="false"                        # Allow HTTP (insecure
 export OPENLIST_SKILLS="core"                             # Tool groups: core(30), default(49), all(110)
 ```
 
+**Choosing a tool tier.** Every tool schema stays resident in the agent's
+context, so the tier is a standing cost on *every* model step, not a one-time
+load:
+
+| `OPENLIST_SKILLS` | Tools | ≈tokens/step | What it adds |
+|---|---|---|---|
+| `core` (default) | 30 | ~4.4k | `auth`, `fs`, `transfer` — browse, search, upload/download |
+| `default` | 49 | ~6.5k | + `task`, `share` |
+| `all` | 110 | ~14.7k | + `admin`, `advanced` — server management, archives, torrents |
+| any group list | — | — | e.g. `fs,transfer,share` — combine the groups below |
+
+For agent use, `core` or `default` is the right range. `fs/copy`, `fs/move` and
+`fs/archive/decompress` run as **asynchronous tasks** on the server, so without
+the `task` group an agent cannot tell whether they finished — that is what makes
+`default` worth its extra ~2k tokens over `core`. Reserve `all` for when you
+actually want server administration (storages, users, settings, metadata).
+
+Groups and their sizes: `auth` (6), `fs` (16), `transfer` (8), `task` (11),
+`share` (8), `admin` (42), `advanced` (16). Combine them with commas; a name that
+is not one of these is ignored with a warning instead of failing the launch.
+
+
 ### 3. Verify
 
 ```bash
