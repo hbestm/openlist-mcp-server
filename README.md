@@ -39,7 +39,7 @@ MCP Server for [OpenList](https://github.com/OpenListTeam/OpenList) — an open-
 | **Torrent** | Parse `.torrent` files, generate torrents for existing files, rapid upload |
 | **Auth** | Auto JWT login with TOTP/2FA support, automatic re-authentication on expiry |
 
-**107 tools in total** — see the [Tools Reference](#tools-reference) below.
+**110 tools in total** — see the [Tools Reference](#tools-reference) below.
 
 ---
 
@@ -74,7 +74,7 @@ export OPENLIST_ALLOWED_PATHS="/mcp-dev-test,/public"     # Restrict to specific
 export OPENLIST_LOCAL_UPLOAD_ROOTS="/tmp:/path/to/uploads" # Enable local file uploads
 export OPENLIST_TOTP_SECRET="your_totp_secret"            # Auto-generate 2FA codes
 export OPENLIST_ALLOW_HTTP="false"                        # Allow HTTP (insecure, use only on LAN)
-export OPENLIST_SKILLS="core"                             # Tool groups: core(30), default(49), all(107)
+export OPENLIST_SKILLS="core"                             # Tool groups: core(30), default(49), all(110)
 ```
 
 ### 3. Verify

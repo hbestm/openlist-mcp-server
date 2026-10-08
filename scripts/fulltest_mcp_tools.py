@@ -365,7 +365,7 @@ async def main() -> None:
     check("find_duplicates (docs)", isinstance(r, dict), str(r)[:60])
 
     # ── output & cleanup ─────────────────────────────────────────────────
-    check("tool registry size", len(tools) == 107, f"{len(tools)} tools")
+    check("tool registry size", len(tools) == 110, f"{len(tools)} tools")
 
     p1 = {
         "create_storage",
@@ -391,6 +391,11 @@ async def main() -> None:
     }
     missing_p1 = sorted(p1 - set(tools))
     check("v0.5.0 P1 tools registered", not missing_p1, f"missing: {missing_p1}")
+
+    # v0.7.0 completes the metadata group: it could be read but never written.
+    p2 = {"create_meta", "update_meta", "delete_meta"}
+    missing_p2 = sorted(p2 - set(tools))
+    check("v0.7.0 meta write tools registered", not missing_p2, f"missing: {missing_p2}")
 
     r = parse(
         await safe(

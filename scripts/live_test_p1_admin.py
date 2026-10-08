@@ -189,6 +189,61 @@ async def main() -> None:
             ),
         )
 
+    # ── 4. metadata lifecycle: create → read → update → delete ───────────
+    # Metadata is per-directory access control, so this exercises the whole
+    # record: a create, a read-back, a merge-update, and a delete that has to
+    # leave the directory itself alone.
+    meta_dir = f"mcp-meta-{ts}"
+    meta_path = f"{TEST_DIR}/{meta_dir}"
+    await raw.request("POST", "fs/mkdir", json={"path": meta_path})
+
+    cm = await t["create_meta"](meta_path, readme="# meta live test", confirm=True)
+    check("create_meta", "Metadata created" in cm, cm[:80])
+
+    metas = json.loads(await t["list_metas"]())
+    mine = [
+        m
+        for m in (metas or {}).get("content", [])
+        if isinstance(m, dict) and m.get("path") == meta_path
+    ]
+    check("created meta is listed", bool(mine), str(mine[:1])[:90])
+    mid = mine[0].get("id") if mine else None
+
+    if mid:
+        um = await t["update_meta"](mid, password="s3cret", p_sub=True, confirm=True)
+        check("update_meta", "Metadata updated" in um, um[:80])
+        got = json.loads(await t["get_meta"](mid))
+        check(
+            "update_meta persisted password + p_sub",
+            got.get("password") == "s3cret" and got.get("p_sub") is True,
+            f"password={got.get('password')!r} p_sub={got.get('p_sub')!r}",
+        )
+        # The endpoint rewrites the whole record; the merge has to keep what the
+        # caller did not mention.
+        check(
+            "update_meta kept the readme",
+            got.get("readme") == "# meta live test",
+            str(got.get("readme"))[:60],
+        )
+
+        dm = await t["delete_meta"](mid, confirm=True)
+        check("delete_meta", "Metadata deleted" in dm, dm[:80])
+        metas2 = json.loads(await t["list_metas"]())
+        check(
+            "meta removed from list",
+            all(
+                m.get("id") != mid for m in (metas2 or {}).get("content", []) if isinstance(m, dict)
+            ),
+        )
+        # the directory outlives its metadata
+        still = await raw.request("POST", "fs/get", json={"path": meta_path})
+        check(
+            "directory survived meta delete", bool(still and still.get("is_dir")), str(still)[:60]
+        )
+
+    await raw.request("POST", "fs/remove", json={"dir": TEST_DIR, "names": [meta_dir]})
+    check("meta test dir removed", True)
+
     await raw.close()
     print("\n===== P1 LIVE SUMMARY =====")
     print(f"PASS: {len(PASS)}  FAIL: {len(FAIL)}")

@@ -12,7 +12,7 @@ from typing import Any
 
 from .._compat import FastMCP
 from ..client import OpenListError, get_client
-from . import enforce_writable, validate_pagination
+from . import enforce_path_allowed, enforce_writable, validate_pagination
 
 # Default permission mask for new users: bits 0-7 (see hidden/access/offline/
 # mkdir/rename/move/copy/remove) plus 12-15 (read/decompress archives, share,
@@ -57,6 +57,39 @@ _USER_FIELDS = (
     "sso_id",
     "allow_ldap",
 )
+
+# Metadata model JSON fields (internal/model/meta.go) — the per-directory
+# access-control record the create/update endpoints accept. Used to rebuild a
+# full payload, because the update endpoint writes the whole struct.
+_META_FIELDS = (
+    "id",
+    "path",
+    "read_users",
+    "read_users_sub",
+    "write_users",
+    "write_users_sub",
+    "password",
+    "p_sub",
+    "write",
+    "w_sub",
+    "hide",
+    "h_sub",
+    "readme",
+    "r_sub",
+    "header",
+    "header_sub",
+)
+
+
+def _meta_body(**fields: Any) -> dict[str, Any]:
+    """Keep only the metadata fields the caller actually supplied.
+
+    ``None`` means "not supplied": on create the server default applies, on
+    update the stored value is kept. An empty string or list is a real value —
+    that is how a password or an ACL is cleared — which is why the sentinel is
+    ``None`` rather than ``""``.
+    """
+    return {name: value for name, value in fields.items() if value is not None}
 
 
 def _normalize_mount_path(mount_path: str) -> str:
@@ -469,6 +502,173 @@ def register_admin_tools(mcp: FastMCP) -> None:
         client = await get_client()
         data = await client.request("GET", "admin/meta/get", params={"id": meta_id})
         return json.dumps(data, indent=2, ensure_ascii=False)
+
+    @mcp.tool()
+    async def create_meta(
+        path: str,
+        password: str | None = None,
+        p_sub: bool | None = None,
+        hide: str | None = None,
+        h_sub: bool | None = None,
+        write: bool | None = None,
+        w_sub: bool | None = None,
+        readme: str | None = None,
+        r_sub: bool | None = None,
+        header: str | None = None,
+        header_sub: bool | None = None,
+        read_users: list[int] | None = None,
+        read_users_sub: bool | None = None,
+        write_users: list[int] | None = None,
+        write_users_sub: bool | None = None,
+        confirm: bool = False,
+    ) -> str:
+        """Attach directory metadata to an OpenList path (Admin only).
+
+        Metadata is OpenList's per-directory access-control and presentation
+        layer: a password, per-user read/write lists, hide rules, and the
+        readme/header shown above a listing. Every setting has a ``*_sub``
+        counterpart that extends it to subdirectories; leaving a field out means
+        "not set" rather than "off", so the server's default applies.
+
+        Args:
+            path: Directory the metadata applies to, e.g. "/team".
+            password: Require this password to open the directory.
+            p_sub: Apply the password to subdirectories too.
+            hide: Glob of names to hide from listings, e.g. "*.tmp".
+            h_sub: Apply the hide rule to subdirectories too.
+            write: Allow writing inside the directory.
+            w_sub: Apply the write setting to subdirectories too.
+            readme: Markdown rendered above the listing.
+            r_sub: Show the readme in subdirectories too.
+            header: HTML injected into the listing page.
+            header_sub: Show the header in subdirectories too.
+            read_users: User IDs allowed to read (see list_users).
+            read_users_sub: Apply the read list to subdirectories too.
+            write_users: User IDs allowed to write (see list_users).
+            write_users_sub: Apply the write list to subdirectories too.
+            confirm: Must be true to actually create. Defaults to false.
+
+        Returns:
+            Confirmation or error message.
+        """
+        if not confirm:
+            return "⚠️ Metadata not created. Re-run with confirm=true to create it."
+        enforce_writable("create_meta")
+        enforce_path_allowed(path)
+        body = _meta_body(
+            path=path,
+            password=password,
+            p_sub=p_sub,
+            hide=hide,
+            h_sub=h_sub,
+            write=write,
+            w_sub=w_sub,
+            readme=readme,
+            r_sub=r_sub,
+            header=header,
+            header_sub=header_sub,
+            read_users=read_users,
+            read_users_sub=read_users_sub,
+            write_users=write_users,
+            write_users_sub=write_users_sub,
+        )
+        client = await get_client()
+        await client.request("POST", "admin/meta/create", json=body)
+        return f"Metadata created for {body['path']}"
+
+    @mcp.tool()
+    async def update_meta(
+        meta_id: int,
+        path: str = "",
+        password: str | None = None,
+        p_sub: bool | None = None,
+        hide: str | None = None,
+        h_sub: bool | None = None,
+        write: bool | None = None,
+        w_sub: bool | None = None,
+        readme: str | None = None,
+        r_sub: bool | None = None,
+        header: str | None = None,
+        header_sub: bool | None = None,
+        read_users: list[int] | None = None,
+        read_users_sub: bool | None = None,
+        write_users: list[int] | None = None,
+        write_users_sub: bool | None = None,
+        confirm: bool = False,
+    ) -> str:
+        """Update an existing metadata entry (Admin only).
+
+        The entry is read first and only the supplied fields are changed, so
+        settings this call does not mention — including any another tool set —
+        survive. The endpoint itself writes the whole record, which is why the
+        merge happens here. Pass "" or [] to clear a password or a user list;
+        omitting a field keeps it.
+
+        Args:
+            meta_id: ID of the metadata entry (see list_metas).
+            path: New target directory (optional; omit to keep the current one).
+            password / p_sub / hide / h_sub / write / w_sub / readme / r_sub /
+                header / header_sub / read_users / read_users_sub /
+                write_users / write_users_sub: As in create_meta. Omit to keep.
+            confirm: Must be true to actually update. Defaults to false.
+
+        Returns:
+            Confirmation or error message.
+        """
+        if not confirm:
+            return "⚠️ Metadata not updated. Re-run with confirm=true to update it."
+        enforce_writable("update_meta")
+        if path:
+            enforce_path_allowed(path)
+        client = await get_client()
+        existing = await client.request("GET", "admin/meta/get", params={"id": meta_id})
+        if not existing or not existing.get("id"):
+            return json.dumps({"ok": False, "error": f"metadata {meta_id} not found."})
+        body = {k: v for k, v in existing.items() if k in _META_FIELDS}
+        body.update(
+            _meta_body(
+                path=path or None,
+                password=password,
+                p_sub=p_sub,
+                hide=hide,
+                h_sub=h_sub,
+                write=write,
+                w_sub=w_sub,
+                readme=readme,
+                r_sub=r_sub,
+                header=header,
+                header_sub=header_sub,
+                read_users=read_users,
+                read_users_sub=read_users_sub,
+                write_users=write_users,
+                write_users_sub=write_users_sub,
+            )
+        )
+        await client.request("POST", "admin/meta/update", json=body)
+        return f"Metadata updated: id={meta_id} (path {body.get('path')})"
+
+    @mcp.tool()
+    async def delete_meta(meta_id: int, confirm: bool = False) -> str:
+        """Delete a metadata entry (Admin only).
+
+        The files under the path are untouched — only the access-control and
+        presentation settings attached to it are removed, so a directory that
+        was password-protected becomes open again.
+
+        Args:
+            meta_id: ID of the metadata entry to delete (see list_metas).
+            confirm: Must be true to actually delete. Defaults to false.
+
+        Returns:
+            Confirmation or error message.
+        """
+        if not confirm:
+            return "⚠️ Metadata not deleted. Re-run with confirm=true to delete it."
+        enforce_writable("delete_meta")
+        client = await get_client()
+        # The endpoint reads the id from the query string, not a JSON body.
+        await client.request("POST", "admin/meta/delete", params={"id": meta_id})
+        return f"Metadata deleted: id={meta_id}"
 
     # ─────────────────────────── Token Management ──────────────────────────────
 

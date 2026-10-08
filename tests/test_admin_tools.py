@@ -331,6 +331,171 @@ async def test_get_meta_passes_id_param(admin_tools) -> None:
     assert client.requests == [("GET", "admin/meta/get", {"params": {"id": 3}})]
 
 
+# ─────────────────────────── Meta (write) ───────────────────────
+
+
+@pytest.mark.asyncio
+async def test_create_meta_requires_confirm(admin_tools) -> None:
+    tools, client = admin_tools
+
+    result = await tools["create_meta"]("/team", password="pw")
+
+    assert "confirm=true" in result
+    assert client.requests == []
+
+
+@pytest.mark.asyncio
+async def test_create_meta_posts_only_supplied_fields(admin_tools) -> None:
+    tools, client = admin_tools
+
+    result = await tools["create_meta"]("/team", password="pw", p_sub=True, confirm=True)
+
+    assert "Metadata created for /team" in result
+    ((method, path, kwargs),) = client.requests
+    assert method == "POST" and path == "admin/meta/create"
+    # Omitting a field means "not set", so the server default applies; only what
+    # the caller named is sent.
+    assert kwargs["json"] == {"path": "/team", "password": "pw", "p_sub": True}
+
+
+@pytest.mark.asyncio
+async def test_create_meta_keeps_explicit_false(admin_tools) -> None:
+    tools, client = admin_tools
+
+    await tools["create_meta"]("/team", write=False, h_sub=False, confirm=True)
+
+    ((_, _, kwargs),) = client.requests
+    # False is a value, not an omission: it has to reach the server.
+    assert kwargs["json"] == {"path": "/team", "write": False, "h_sub": False}
+
+
+@pytest.mark.asyncio
+async def test_create_meta_is_blocked_when_readonly(admin_tools, monkeypatch) -> None:
+    tools, client = admin_tools
+    monkeypatch.setenv("OPENLIST_READONLY", "true")
+
+    with pytest.raises(PermissionError):
+        await tools["create_meta"]("/team", confirm=True)
+
+    assert client.requests == []
+
+
+@pytest.mark.asyncio
+async def test_create_meta_respects_allowed_paths(admin_tools, monkeypatch) -> None:
+    tools, client = admin_tools
+    monkeypatch.setenv("OPENLIST_ALLOWED_PATHS", "/allowed")
+
+    with pytest.raises(PermissionError):
+        await tools["create_meta"]("/elsewhere", confirm=True)
+
+    assert client.requests == []
+
+
+@pytest.mark.asyncio
+async def test_update_meta_requires_confirm(admin_tools) -> None:
+    tools, client = admin_tools
+
+    result = await tools["update_meta"](5, password="pw")
+
+    assert "confirm=true" in result
+    assert client.requests == []
+
+
+@pytest.mark.asyncio
+async def test_update_meta_reads_then_merges(admin_tools, monkeypatch) -> None:
+    tools, client = admin_tools
+    monkeypatch.setattr(
+        "openlist_mcp.tools.admin.get_client",
+        _admin_fake_get_client(
+            client,
+            existing={
+                "id": 5,
+                "path": "/team",
+                "password": "old",
+                "p_sub": True,
+                "write": True,
+                "hide": "*.tmp",
+                "readme": "hello",
+            },
+        ),
+    )
+
+    result = await tools["update_meta"](5, password="new", confirm=True)
+
+    assert "Metadata updated: id=5 (path /team)" in result
+    assert [r[:2] for r in client.requests] == [
+        ("GET", "admin/meta/get"),
+        ("POST", "admin/meta/update"),
+    ]
+    body = client.requests[1][2]["json"]
+    assert body["password"] == "new"
+    # The endpoint writes the whole record, so untouched fields must be carried
+    # over or they would be zeroed.
+    assert body["p_sub"] is True and body["write"] is True
+    assert body["hide"] == "*.tmp" and body["readme"] == "hello"
+
+
+@pytest.mark.asyncio
+async def test_update_meta_empty_string_clears_password(admin_tools, monkeypatch) -> None:
+    tools, client = admin_tools
+    monkeypatch.setattr(
+        "openlist_mcp.tools.admin.get_client",
+        _admin_fake_get_client(client, existing={"id": 5, "path": "/team", "password": "old"}),
+    )
+
+    await tools["update_meta"](5, password="", confirm=True)
+
+    body = client.requests[1][2]["json"]
+    assert body["password"] == ""  # cleared, not kept
+
+
+@pytest.mark.asyncio
+async def test_update_meta_missing_id_reports_error(admin_tools, monkeypatch) -> None:
+    tools, client = admin_tools
+    monkeypatch.setattr(
+        "openlist_mcp.tools.admin.get_client",
+        _admin_fake_get_client(client, existing={}),
+    )
+
+    result = await tools["update_meta"](99, password="pw", confirm=True)
+
+    assert "not found" in result
+    assert [r[:2] for r in client.requests] == [("GET", "admin/meta/get")]
+
+
+@pytest.mark.asyncio
+async def test_delete_meta_requires_confirm(admin_tools) -> None:
+    tools, client = admin_tools
+
+    result = await tools["delete_meta"](5)
+
+    assert "confirm=true" in result
+    assert client.requests == []
+
+
+@pytest.mark.asyncio
+async def test_delete_meta_sends_id_as_query_param(admin_tools) -> None:
+    tools, client = admin_tools
+
+    result = await tools["delete_meta"](5, confirm=True)
+
+    assert "Metadata deleted: id=5" in result
+    # The handler reads c.Query("id"); a JSON body would leave it empty and the
+    # request would fail with a parse error instead of deleting.
+    assert client.requests == [("POST", "admin/meta/delete", {"params": {"id": 5}})]
+
+
+@pytest.mark.asyncio
+async def test_delete_meta_is_blocked_when_readonly(admin_tools, monkeypatch) -> None:
+    tools, client = admin_tools
+    monkeypatch.setenv("OPENLIST_READONLY", "true")
+
+    with pytest.raises(PermissionError):
+        await tools["delete_meta"](5, confirm=True)
+
+    assert client.requests == []
+
+
 # ─────────────────────────── Token Management ───────────────────
 
 
@@ -431,14 +596,19 @@ async def test_scan_tools_respect_readonly(admin_tools, monkeypatch) -> None:
 
 
 def _admin_fake_get_client(real_client, existing):
-    """Async get_client() whose GET admin/{storage,user}/get returns `existing`
-    (so update_storage / update_user can read-then-merge) while all other
-    requests are recorded on the real FakeClient."""
+    """Async get_client() whose GET admin/{storage,user,meta}/get returns
+    `existing` (so update_storage / update_user / update_meta can
+    read-then-merge) while all other requests are recorded on the real
+    FakeClient."""
 
     class _Proxy:
         async def request(self, method, path, **kwargs):
             real_client.requests.append((method, path, kwargs))
-            if method == "GET" and path in ("admin/storage/get", "admin/user/get"):
+            if method == "GET" and path in (
+                "admin/storage/get",
+                "admin/user/get",
+                "admin/meta/get",
+            ):
                 return existing
             return {}
 

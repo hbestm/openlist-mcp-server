@@ -6,6 +6,30 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.7.0] — 2026-10-08
+
+### Added
+- **Directory metadata (write)** (`admin.py`) — 3 new tools: `create_meta`,
+  `update_meta`, `delete_meta`. Metadata is OpenList's per-directory
+  access-control and presentation layer: a password, per-user read/write lists,
+  hide rules, and the readme/header shown above a listing — each with a `*_sub`
+  counterpart that extends it to subdirectories. The group could previously only
+  be read (`list_metas`, `get_meta`), so an agent could see that a folder was
+  protected but never protect one.
+  - `update_meta` reads the entry and merges only the fields the caller named:
+    the endpoint rewrites the whole record, so an unmerged update would zero
+    every setting it did not mention.
+  - `None` means "not supplied" while `""` and `[]` are real values, so a
+    password or an ACL can be cleared without disturbing anything else.
+  - `delete_meta` removes the record only — the directory and its files remain.
+  - Admin group grows 42 → 45 tools; total tool count 107 → **110**.
+
+### Notes
+- All three require `confirm=true` and respect `OPENLIST_READONLY` and
+  `OPENLIST_ALLOWED_PATHS`, matching the other admin write tools. `delete_meta`
+  sends the id as a query parameter, because that is where the endpoint reads it.
+
+
 ## [0.6.0] — 2026-10-07
 
 ### Added
@@ -517,6 +541,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 0.7.0 | 2026-10-08 | Directory metadata write (`create_meta` / `update_meta` / `delete_meta`); 110 tools |
 | 0.6.0 | 2026-10-07 | Dual mcp support (1.x and 2.x) via `_compat` import shim, `mcp` range widened to `<3.0.0`, upstream mcp 2.0 migration merged |
 | 0.5.0 | 2026-08-16 | 107 tools: admin write for storages, offline-download clients and users; `delete_setting` query-param fix; runtime-derived banner counts |
 | 0.4.1 | 2026-08-16 | Multipart resume via `X-File-Md5` identity proof, server-driven chunk slicing, live regression suites |

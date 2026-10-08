@@ -119,11 +119,11 @@ export OPENLIST_URL=http://host:5244 OPENLIST_USERNAME=admin \
        OPENLIST_PASSWORD=... OPENLIST_ALLOW_HTTP=true \
        OPENLIST_TEST_DIR=/scratch/mcp
 python scripts/fulltest_capabilities.py  # 64 checks — fs, shares, tasks, admin, archives, torrents, re-login
-python scripts/fulltest_mcp_tools.py     # 62 checks — every tool group, real payloads
+python scripts/fulltest_mcp_tools.py     # 63 checks — every tool group, real payloads
 python scripts/fulltest_stability.py     # 16 checks — repeats, concurrency, bad inputs, re-auth
 python scripts/fulltest_mcp_e2e.py       # 22 checks — full MCP protocol over stdio
 python scripts/live_test_multipart.py    # 10 checks — resumable multipart upload (v4.2.5+)
-python scripts/live_test_p1_admin.py     # 21 checks — storage CRUD, driver configs, user write
+python scripts/live_test_p1_admin.py     # 30 checks — storage CRUD, driver configs, user write, metadata lifecycle
 # safety gates (subprocess envs):
 OPENLIST_READONLY=true TEST_MODE=readonly python scripts/fulltest_safety_gates.py
 OPENLIST_ALLOWED_PATHS="$OPENLIST_TEST_DIR" OPENLIST_BLOCKED_PATH=/elsewhere \
@@ -140,9 +140,14 @@ ones that take a path and write to it: a download URL, a direct-upload
 capability or a generated `.torrent` for an outside path is itself the leak, and
 `readonly` has to reject the ones that write.
 
-Reference results on OpenList v4.2.6 (2bdf16d): 64/64, 62/62, 16/16, 22/22,
-21/21 (gates: 12 readonly + 9 allowed-paths), 10/10 (multipart) and 21/21
-(P1 admin) — all green, with 3 checks skipped.
+Reference results on OpenList v4.2.6 (2bdf16d): 64/64, 63/63, 16/16, 22/22,
+21/21 (gates: 12 readonly + 9 allowed-paths), 10/10 (multipart) and 30/30
+(P1 admin + metadata) — all green, with 3 checks skipped.
+
+`live_test_p1_admin.py` covers the metadata lifecycle end to end: it creates a
+directory, attaches metadata, reads it back, updates it, and deletes it — then
+asserts the directory itself survived, since `delete_meta` removes the record,
+not the files.
 
 Those skips are deployment-dependent rather than failures, and each one names
 its reason: `fs/recursive_move` is not implemented by OpenList v4.2.x (the MCP

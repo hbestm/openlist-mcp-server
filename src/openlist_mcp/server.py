@@ -17,7 +17,7 @@ Environment Variables:
     OPENLIST_ALLOWED_PATHS - Comma-separated path allowlist (optional)
     OPENLIST_LOCAL_UPLOAD_ROOTS - Directories upload_local_file may read; the tool is off unless set (optional)
     OPENLIST_SKILLS   - Tool groups to load: core|default|all|custom (optional)
-                        core=30 tools, default=49 tools, all=107 tools (default: core)
+                        core=30 tools, default=49 tools, all=110 tools (default: core)
                         custom example: "fs,transfer,task"
 """
 
