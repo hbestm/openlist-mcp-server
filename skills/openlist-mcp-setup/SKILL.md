@@ -16,7 +16,7 @@ description: 把 OpenList MCP 服务器接入 DSH 或其他 MCP 客户端时的�
 | `all` | 110 | **~14.7k** | 全部 + admin, advanced |
 | 自定义 | 任意 | 按组计 | 7 个组任意组合 |
 
-组明细(`SKILL_GROUP_TOOLS`):`auth` 6、`fs` 16、`transfer` 8、`task` 11、`share` 8、`admin` 42、`advanced` 16。
+组明细(`SKILL_GROUP_TOOLS`):`auth` 6、`fs` 16、`transfer` 8、`task` 11、`share` 8、`admin` 45、`advanced` 16。
 
 **不要替用户决定档位**,也不要因为"测试套件期望 110"就默认 `all` —— 那会让用户每次对话都多付约 1 万 tokens。
 

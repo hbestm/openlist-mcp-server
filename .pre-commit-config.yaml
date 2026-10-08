@@ -8,6 +8,14 @@ repos:
 
   - repo: local
     hooks:
+      - id: render-tool-docs
+        name: regenerate the generated tool docs
+        entry: python scripts/render_tool_docs.py
+        language: system
+        pass_filenames: false
+        # Only the registry and the renderer can change what those blocks say.
+        files: ^(src/openlist_mcp/skills\.py|src/openlist_mcp/tools/|scripts/render_tool_docs\.py)
+
       - id: mypy-openlist-mcp
         name: mypy openlist_mcp
         entry: mypy src/openlist_mcp --ignore-missing-imports

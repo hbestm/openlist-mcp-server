@@ -150,17 +150,25 @@ openlist-mcp
 
 ## 工具参考
 
-### 认证 & 公共
+下列分组就是 `OPENLIST_SKILLS` 所选择的那些组，且按档位顺序排列：`core` 是前三组，`default` 再加 `task` 与 `share`，`all` 再加 `admin` 与 `advanced`。描述取自工具自身的 docstring（即模型实际读到的文本），因此本表与运行中的服务不会脱节。
+
+<!-- BEGIN GENERATED: tools -->
+### `auth` — 认证(6 个工具)
+
+属于 `core`, `default`, `all` 档。
 
 | 工具 | 说明 |
 |------|------|
 | `login` | 使用配置的凭据登录。如果设置 `OPENLIST_TOTP_SECRET`，TOTP 自动生成；否则需传 `otp_code`。 |
 | `get_public_settings` | 获取 OpenList 公共设置（无需认证）。 |
-| `get_me` | 获取当前用户信息（用户名、角色、权限、2FA 状态）。 |
-| `get_capabilities` | 汇总服务器设置、当前用户、可用下载工具和 MCP 安全配置。 |
-| `logout` | 登出并使当前 token 失效。 |
+| `list_my_ssh_keys` | 列出当前用户的 SSH 公钥。 |
+| `add_ssh_key` | 添加新的 SSH 公钥。受 `OPENLIST_READONLY` 保护。 |
+| `delete_ssh_key` | 按 ID 删除 SSH 公钥。需要 `confirm=true`。 |
+| `update_current_user` | 修改当前用户密码或基础路径。 |
 
-### 文件系统
+### `fs` — 文件系统(16 个工具)
+
+属于 `core`, `default`, `all` 档。
 
 | 工具 | 说明 |
 |------|------|
@@ -177,8 +185,13 @@ openlist-mcp
 | `remove` | 删除文件/文件夹。需 `confirm=true`。 |
 | `remove_empty_dirs` | 递归删除空目录（清理后收尾）。 |
 | `recursive_move` | 递归移动整个目录树（兼容 OpenList v4.2.x fallback）。 |
+| `tree` | 递归生成目录树（带 📁/📄 图标）。 |
+| `disk_usage` | 按目录和文件类型统计磁盘用量。 |
+| `mirror` | 递归目录同步 — 比较源/目标目录，复制缺失文件，可选删除多余文件。模式：`push`（src→dst）、`pull`（dst→src）、`mirror`（push + 删除 dst 中多余文件）。 |
 
-### 传输
+### `transfer` — 传输(8 个工具)
+
+属于 `core`, `default`, `all` 档。
 
 | 工具 | 说明 |
 |------|------|
@@ -191,15 +204,17 @@ openlist-mcp
 | `multipart_abort_upload` | 中止 multipart 上传会话并丢弃分块。需 `confirm=true`。 |
 | `get_direct_upload_info` | 获取支持直传的后端（S3 等）的客户端直传凭据。 |
 
-### 任务管理
+### `task` — 任务(11 个工具)
+
+属于 `default`, `all` 档。
 
 | 工具 | 说明 |
 |------|------|
 | `list_tasks` | 按类型和状态列出异步任务。 |
 | `get_task_info` | 按 ID 查询单个任务。 |
+| `delete_task` | 删除任务记录。需 `confirm=true`。 |
 | `retry_task` | 重试失败的任务。 |
 | `cancel_task` | 取消正在运行的任务。需 `confirm=true`。 |
-| `delete_task` | 删除任务记录。需 `confirm=true`。 |
 | `batch_cancel_tasks` | 按 ID 批量取消任务。需 `confirm=true`。 |
 | `batch_delete_tasks` | 按 ID 批量删除任务记录。需 `confirm=true`。 |
 | `batch_retry_tasks` | 按 ID 批量重试失败任务。 |
@@ -207,20 +222,24 @@ openlist-mcp
 | `clear_succeeded_tasks` | 仅清除成功完成的任务。 |
 | `retry_failed_tasks` | 一键重试所有失败任务。 |
 
-### 分享管理
+### `share` — 分享(8 个工具)
+
+属于 `default`, `all` 档。
 
 | 工具 | 说明 |
 |------|------|
 | `create_share` | 创建分享链接，传 `files: list[str]`（支持多文件）。 |
-| `list_shares` | 列出所有分享链接。 |
 | `get_share_info` | 按 ID 查看单个分享详情。 |
+| `list_shares` | 列出所有分享链接。 |
 | `update_share` | 修改已有分享（密码、过期时间、文件列表等）。 |
-| `enable_share` | 重新启用已禁用的分享链接。 |
-| `disable_share` | 临时禁用分享链接（不删除）。 |
 | `cancel_share` | `disable_share` 的别名。 |
 | `delete_share` | 永久删除分享链接。需 `confirm=true`。 |
+| `enable_share` | 重新启用已禁用的分享链接。 |
+| `disable_share` | 临时禁用分享链接（不删除）。 |
 
-### 系统管理
+### `admin` — 系统管理(45 个工具)
+
+属于 `all` 档。
 
 | 工具 | 说明 |
 |------|------|
@@ -239,6 +258,18 @@ openlist-mcp
 | `get_setting` | 按 key 查询单个设置（如 `site_title`）。 |
 | `save_settings` | 原子性更新一个或多个全局设置。需要 `confirm=true`。 |
 | `delete_setting` | 删除自定义设置。需要 `confirm=true`。 |
+| `set_aria2` | 配置 aria2 离线下载客户端（`uri`、`secret`）。需要 `confirm=true`。 |
+| `set_qbittorrent` | 配置 qBittorrent 客户端（`url`、`seedtime`）。需要 `confirm=true`。 |
+| `set_transmission` | 配置 Transmission 客户端（`uri`、`seedtime`）。需要 `confirm=true`。 |
+| `set_115` | 配置 115 客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_115_open` | 配置 115 Open 客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_123_pan` | 配置 123 网盘客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_123_open` | 配置 123 Open 客户端（`temp_dir`、`callback_url`）。需要 `confirm=true`。 |
+| `set_pikpak` | 配置 PikPak 客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_thunder` | 配置迅雷客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_thunderx` | 配置 ThunderX 客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_thunder_browser` | 配置迅雷浏览器客户端（`temp_dir`）。需要 `confirm=true`。 |
+| `set_guangyapan` | 配置光雅盘客户端（`temp_dir`）。需要 `confirm=true`。 |
 | `get_index_progress` | 查看搜索索引构建进度。 |
 | `build_search_index` | 触发全量重建搜索索引。需要 `confirm=true`。 |
 | `update_search_index` | 触发增量更新搜索索引。需要 `confirm=true`。 |
@@ -257,50 +288,30 @@ openlist-mcp
 | `start_manual_scan` | 启动对某个存储挂载点的一次性手动扫描。需要 `confirm=true`。 |
 | `stop_manual_scan` | 停止正在运行的手动扫描。需要 `confirm=true`。 |
 | `get_manual_scan_progress` | 获取手动扫描的进度。 |
-| `list_my_ssh_keys` | 列出当前用户的 SSH 公钥。 |
-| `add_ssh_key` | 添加新的 SSH 公钥。受 `OPENLIST_READONLY` 保护。 |
-| `delete_ssh_key` | 按 ID 删除 SSH 公钥。需要 `confirm=true`。 |
-| `update_current_user` | 修改当前用户密码或基础路径。 |
 
-### 智能工具
+### `advanced` — 高级与种子(16 个工具)
+
+属于 `all` 档。
 
 | 工具 | 说明 |
 |------|------|
-| `tree` | 递归生成目录树（带 📁/📄 图标）。 |
-| `disk_usage` | 按目录和文件类型统计磁盘用量。 |
+| `get_capabilities` | 汇总服务器设置、当前用户、可用下载工具和 MCP 安全配置。 |
+| `offline_download` | 从远程 URL 直接下载文件到 OpenList 服务端。支持 `http://`、`https://`、`magnet:`、`ftp://`、`sftp://` 协议。使用 aria2、Transmission 或 qBittorrent。自动拦截内网 IP（SSRF 防护）。磁力链接无 hostname，豁免 SSRF 检查。 |
+| `batch_download` | 批量离线下载多个 URL。 |
 | `find_duplicates` | 按名称+大小或仅大小查找重复文件。 |
 | `content_preview` | 通过 Range 请求预览文本文件内容。 |
-| `batch_download` | 批量离线下载多个 URL。 |
-| `mirror` | 递归目录同步 — 比较源/目标目录，复制缺失文件，可选删除多余文件。模式：`push`（src→dst）、`pull`（dst→src）、`mirror`（push + 删除 dst 中多余文件）。 |
-
-### 高级 & Torrent
-
-| 工具 | 说明 |
-|------|------|
-| `offline_download` | 从远程 URL 直接下载文件到 OpenList 服务端。支持 `http://`、`https://`、`magnet:`、`ftp://`、`sftp://` 协议。使用 aria2、Transmission 或 qBittorrent。自动拦截内网 IP（SSRF 防护）。磁力链接无 hostname，豁免 SSRF 检查。 |
-| `decompress_archive` | 服务端在线解压压缩文件（zip、rar、7z、tar.gz 等）。 |
-| `get_archive_meta` | 获取压缩包元数据（格式、加密状态、注释、文件树），无需解压。 |
-| `list_archive_files` | 不解压查看压缩包内文件列表。 |
-| `torrent_upload_parse` | 通过表单上传并解析 `.torrent` 文件，返回解析信息 + 可复用的 base64 数据。 |
-| `list_download_tools` | 查询服务端配置的可用下载工具。 |
-| `set_aria2` | 配置 aria2 离线下载客户端（`uri`、`secret`）。需要 `confirm=true`。 |
-| `set_qbittorrent` | 配置 qBittorrent 客户端（`url`、`seedtime`）。需要 `confirm=true`。 |
-| `set_transmission` | 配置 Transmission 客户端（`uri`、`seedtime`）。需要 `confirm=true`。 |
-| `set_115` | 配置 115 客户端（`temp_dir`）。需要 `confirm=true`。 |
-| `set_115_open` | 配置 115 Open 客户端（`temp_dir`）。需要 `confirm=true`。 |
-| `set_123_pan` | 配置 123 网盘客户端（`temp_dir`）。需要 `confirm=true`。 |
-| `set_123_open` | 配置 123 Open 客户端（`temp_dir`、`callback_url`）。需要 `confirm=true`。 |
-| `set_pikpak` | 配置 PikPak 客户端（`temp_dir`）。需要 `confirm=true`。 |
-| `set_thunder` | 配置迅雷客户端（`temp_dir`）。需要 `confirm=true`。 |
-| `set_thunderx` | 配置 ThunderX 客户端（`temp_dir`）。需要 `confirm=true`。 |
-| `set_thunder_browser` | 配置迅雷浏览器客户端（`temp_dir`）。需要 `confirm=true`。 |
-| `set_guangyapan` | 配置光雅盘客户端（`temp_dir`）。需要 `confirm=true`。 |
 | `get_archive_extensions` | 查询服务端支持的解压格式扩展名列表。 |
+| `get_archive_meta` | 获取压缩包元数据（格式、加密状态、注释、文件树），无需解压。 |
+| `decompress_archive` | 服务端在线解压压缩文件（zip、rar、7z、tar.gz 等）。 |
+| `list_archive_files` | 不解压查看压缩包内文件列表。 |
+| `get_me` | 获取当前用户信息（用户名、角色、权限、2FA 状态）。 |
+| `logout` | 登出并使当前 token 失效。 |
+| `list_download_tools` | 查询服务端配置的可用下载工具。 |
 | `parse_torrent` | 解析 `.torrent` 文件（base64），返回文件列表和元数据。 |
+| `torrent_upload_parse` | 通过表单上传并解析 `.torrent` 文件，返回解析信息 + 可复用的 base64 数据。 |
 | `generate_torrent` | 为服务端已有文件生成 `.torrent` 种子文件。 |
 | `torrent_rapid_upload` | 从种子数据尝试秒传（需存储后端支持 CAS）。 |
-
----
+<!-- END GENERATED: tools -->
 
 ## 安全
 

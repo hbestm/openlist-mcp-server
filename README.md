@@ -158,157 +158,171 @@ Restart Claude Desktop, then try: *"List the files on my OpenList server."*
 
 ## Tools Reference
 
-### Auth & Public
+The groups below are the same ones `OPENLIST_SKILLS` selects from, and they are in
+tier order: `core` is the first three, `default` adds `task` and `share`, and `all`
+adds `admin` and `advanced`. Descriptions are the tools' own docstrings — the text
+the model reads — so this table and the running server cannot drift apart.
+
+<!-- BEGIN GENERATED: tools -->
+### `auth` — 6 tools
+
+In tiers: `core`, `default`, `all`.
 
 | Tool | Description |
 |------|-------------|
-| `login` | Login using configured credentials. If 2FA is enabled and `OPENLIST_TOTP_SECRET` is set, TOTP is auto-generated. Otherwise pass `otp_code` manually. |
-| `get_public_settings` | Get public OpenList settings without authentication. |
-| `get_me` | Get current user profile (username, role, permissions, 2FA status). |
-| `get_capabilities` | Summarize server settings, current user, available download tools, and MCP safety config. |
-| `logout` | Invalidate the current token. |
-
-### File System
-
-| Tool | Description |
-|------|-------------|
-| `list_files` | List files and folders in a directory (supports pagination). |
-| `list_dirs` | List child directories under a path (useful for destination selection). |
-| `get_file_info` | Get detailed info for a file or folder (size, type, provider, raw_url). |
-| `search_files` | Search files by keyword (requires search index on OpenList). |
-| `create_folder` | Create a new directory. |
-| `rename` | Rename a file or folder. |
-| `batch_rename` | Rename multiple files/folders in the same directory. |
-| `regex_rename` | Batch rename using Go-style regex patterns (`$1`, `$2` for capture groups). |
-| `copy` | Copy files/folders to another directory. |
-| `move` | Move files/folders to another directory. |
-| `remove` | Delete files/folders. Requires `confirm=true`. |
-| `remove_empty_dirs` | Recursively remove empty directories (useful after cleanup). |
-| `recursive_move` | Move an entire directory tree (with fallback for OpenList v4.2.x). |
-
-### Transfer
-
-| Tool | Description |
-|------|-------------|
-| `get_download_url` | Get direct/proxy download URL for a file. |
-| `upload_file` | Upload base64-encoded file content (max 100 MB). |
-| `upload_file_multipart` | Upload base64 content via the resumable multipart API (large files, resumable). Requires OpenList v4.2.5+ with the `multipart_enabled` setting. |
-| `upload_local_file` | Upload a local file path readable by the MCP server. Disabled by default; set `OPENLIST_LOCAL_UPLOAD_ROOTS` to enable. |
-| `multipart_upload_local_file` | Stream a local file to the server via the resumable multipart API without loading it into memory. |
-| `multipart_upload_status` | Query a multipart upload session's progress (by upload_id or path+size). |
-| `multipart_abort_upload` | Abort a multipart upload session and discard its chunks. Requires `confirm=true`. |
-| `get_direct_upload_info` | Get client-side direct upload credentials for storage backends that support it (S3, etc.). |
-
-### Task Management
-
-| Tool | Description |
-|------|-------------|
-| `list_tasks` | List async tasks by type (`offline_download`, `upload`, `copy`, etc.) and status (`done`, `undone`). |
-| `get_task_info` | Get a single task by ID — the most reliable way to inspect a task. |
-| `retry_task` | Retry a failed task. |
-| `cancel_task` | Cancel a running task. Requires `confirm=true`. |
-| `delete_task` | Delete a task record. Requires `confirm=true`. |
-| `batch_cancel_tasks` | Cancel multiple tasks at once by ID. Requires `confirm=true`. |
-| `batch_delete_tasks` | Delete multiple task records by ID. Requires `confirm=true`. |
-| `batch_retry_tasks` | Retry multiple failed tasks by ID. |
-| `clear_done_tasks` | Clear all completed/failed/cancelled tasks of a type. |
-| `clear_succeeded_tasks` | Clear only successfully completed tasks. |
-| `retry_failed_tasks` | Retry every failed task of a type in one shot. |
-
-### Share Management
-
-| Tool | Description |
-|------|-------------|
-| `create_share` | Create share link(s) for one or more files/folders. Pass `files: list[str]`. |
-| `list_shares` | List all existing share links. |
-| `get_share_info` | Get details of a specific share link by ID. |
-| `update_share` | Modify an existing share (password, expiration, files, etc.). |
-| `enable_share` | Re-enable a disabled share link. |
-| `disable_share` | Temporarily disable a share link without deleting it. |
-| `cancel_share` | Alias for `disable_share`. |
-| `delete_share` | Permanently delete a share link. Requires `confirm=true`. |
-
-### System (Admin)
-
-| Tool | Description |
-|------|-------------|
-| `list_storages` | List all configured storage backends (mount path, driver, status, space). |
-| `get_storage_info` | Get detailed info about a specific storage by ID. |
-| `create_storage` | Create a storage backend from a driver and its config JSON (see `get_driver_info`). Requires `confirm=true`. |
-| `update_storage` | Update a storage; the current config is read first so unspecified fields are preserved. Requires `confirm=true`. |
-| `delete_storage` | Delete a storage backend and unmount it. Requires `confirm=true`. |
-| `enable_storage` | Enable and remount a storage backend. Requires `confirm=true`. |
-| `disable_storage` | Disable a storage backend without deleting its config. Requires `confirm=true`. |
-| `load_all_storages` | Reload and remount every enabled storage. Requires `confirm=true`. |
-| `list_drivers` | List all registered storage driver names. |
-| `get_driver_info` | Get details about a specific storage driver. |
-| `list_drivers_detail` | List all drivers with full configuration templates. |
-| `get_settings` | List all global server settings. |
-| `get_setting` | Get a single setting by key (e.g. `site_title`). |
-| `save_settings` | Update one or more global settings atomically. Requires `confirm=true`. |
-| `delete_setting` | Remove a custom setting. Requires `confirm=true`. |
-| `get_index_progress` | Get search index building progress. |
-| `build_search_index` | Trigger full search index rebuild. Requires `confirm=true`. |
-| `update_search_index` | Trigger incremental search index update. Requires `confirm=true`. |
-| `stop_indexing` | Stop the current indexing process. Requires `confirm=true`. |
-| `clear_search_index` | Clear the entire search index. Requires `confirm=true`. |
-| `list_users` | List all user accounts with pagination. |
-| `get_user` | Get detailed info for a specific user by ID. |
-| `create_user` | Create a user account (guest/admin roles are rejected client-side). Requires `confirm=true`. |
-| `update_user` | Update a user; read-then-merge, and the role cannot change via the API. Requires `confirm=true`. |
-| `list_metas` | List all metadata configurations. |
-| `get_meta` | Get metadata details by ID. |
-| `create_meta` | Attach directory metadata: password, per-user read/write lists, hide rules, readme and header — each with a `*_sub` variant that extends it to subdirectories. Requires `confirm=true`. |
-| `update_meta` | Update directory metadata; read-then-merge, so settings the call does not mention survive. Pass `""` or `[]` to clear a field. Requires `confirm=true`. |
-| `delete_meta` | Delete a directory's metadata record; the directory and its files stay. Requires `confirm=true`. |
-| `reset_api_token` | Generate a new API token. Requires `confirm=true`. |
-| `start_manual_scan` | Start a one-off manual scan of a storage mount. Requires `confirm=true`. |
-| `stop_manual_scan` | Stop a running manual scan. Requires `confirm=true`. |
-| `get_manual_scan_progress` | Get the progress of the running/last manual scan. |
+| `login` | Login to OpenList server using configured credentials. |
+| `get_public_settings` | Get public settings of the OpenList server. |
 | `list_my_ssh_keys` | List SSH public keys for the current user. |
-| `add_ssh_key` | Add a new SSH public key. Respects `OPENLIST_READONLY`. |
-| `delete_ssh_key` | Delete an SSH public key by ID. Requires `confirm=true`. |
-| `update_current_user` | Update current user's password or base path. |
+| `add_ssh_key` | Add a new SSH public key for the current user. |
+| `delete_ssh_key` | Delete an SSH public key by its ID. |
+| `update_current_user` | Update the current user's profile (password, base path). |
 
-### Smart Tools
+### `fs` — 16 tools
 
-| Tool | Description |
-|------|-------------|
-| `tree` | Build a recursive directory tree with 📁/📄 icons (configurable depth). |
-| `disk_usage` | Show disk usage summary by directory and file type. |
-| `find_duplicates` | Find potential duplicate files grouped by name+size or size only. |
-| `content_preview` | Preview text file content via range request (no full download). |
-| `batch_download` | Download multiple URLs at once via offline download. |
-| `mirror` | Recursive directory sync — compare src/dst, copy missing files, optionally delete extras. Modes: `push` (src→dst), `pull` (dst→src), `mirror` (push + delete extras in dst). |
-
-### Advanced & Torrent
+In tiers: `core`, `default`, `all`.
 
 | Tool | Description |
 |------|-------------|
-| `offline_download` | Download a file from a remote URL directly to the OpenList server. Supports `http://`, `https://`, `magnet:`, `ftp://`, and `sftp://` URLs. Uses aria2, Transmission, or qBittorrent. Blocks private/internal IPs (SSRF protection). Magnet links are exempt from SSRF check (no hostname to resolve). |
-| `decompress_archive` | Decompress archives (zip, rar, 7z, tar.gz, etc.) on the server. |
-| `get_archive_meta` | Get archive metadata (format, encryption, comment, file tree) without extracting. |
-| `list_archive_files` | List files inside an archive without extracting. |
-| `torrent_upload_parse` | Upload and parse a `.torrent` file via multipart form, returns info + reusable base64 data. |
-| `list_download_tools` | List available download tools configured on the OpenList server. |
-| `set_aria2` | Configure the aria2 offline-download client (`uri`, `secret`). Requires `confirm=true`. |
-| `set_qbittorrent` | Configure the qBittorrent client (`url`, `seedtime`). Requires `confirm=true`. |
-| `set_transmission` | Configure the Transmission client (`uri`, `seedtime`). Requires `confirm=true`. |
-| `set_115` | Configure the 115 client (`temp_dir`). Requires `confirm=true`. |
-| `set_115_open` | Configure the 115 Open client (`temp_dir`). Requires `confirm=true`. |
-| `set_123_pan` | Configure the 123 Pan client (`temp_dir`). Requires `confirm=true`. |
-| `set_123_open` | Configure the 123 Open client (`temp_dir`, `callback_url`). Requires `confirm=true`. |
-| `set_pikpak` | Configure the PikPak client (`temp_dir`). Requires `confirm=true`. |
-| `set_thunder` | Configure the Thunder client (`temp_dir`). Requires `confirm=true`. |
-| `set_thunderx` | Configure the ThunderX client (`temp_dir`). Requires `confirm=true`. |
-| `set_thunder_browser` | Configure the Thunder Browser client (`temp_dir`). Requires `confirm=true`. |
-| `set_guangyapan` | Configure the GuangYaPan client (`temp_dir`). Requires `confirm=true`. |
-| `get_archive_extensions` | List archive file extensions supported by the server. |
-| `parse_torrent` | Parse a `.torrent` file (base64) and return file list and metadata. |
-| `generate_torrent` | Generate a `.torrent` file for an existing file on the server. |
-| `torrent_rapid_upload` | Attempt server-side rapid import from torrent data (requires CAS-capable storage). |
+| `list_files` | List files and folders in a directory on OpenList. |
+| `list_dirs` | List subdirectories under a directory. |
+| `get_file_info` | Get detailed information about a specific file or folder. |
+| `search_files` | Search for files and folders by keyword. |
+| `create_folder` | Create a new folder (directory) on OpenList. |
+| `rename` | Rename a file or folder. |
+| `batch_rename` | Rename multiple files or folders in the same directory. |
+| `regex_rename` | Rename files in a directory using regular expression substitution. |
+| `copy` | Copy files or folders to another directory. |
+| `move` | Move files or folders to another directory. |
+| `remove` | Delete files or folders. |
+| `remove_empty_dirs` | Recursively remove empty directories under the given path. |
+| `recursive_move` | Recursively move an entire directory tree to a new location. |
+| `tree` | Build a recursive directory tree for the given path. |
+| `disk_usage` | Show disk usage summary for a directory. |
+| `mirror` | Synchronize files from a source directory to a destination directory. |
 
----
+### `transfer` — 8 tools
+
+In tiers: `core`, `default`, `all`.
+
+| Tool | Description |
+|------|-------------|
+| `get_download_url` | Get the download URL for a file on OpenList. |
+| `upload_file` | Upload a file to OpenList from base64-encoded content. |
+| `upload_file_multipart` | Upload a file using the resumable multipart upload API. |
+| `upload_local_file` | Upload a local file that the MCP server process can access. |
+| `multipart_upload_local_file` | Upload a local file via the resumable multipart API, streaming from disk. |
+| `multipart_upload_status` | Query a multipart upload session's progress. |
+| `multipart_abort_upload` | Abort a multipart upload session and discard its chunks. |
+| `get_direct_upload_info` | Get client-side direct upload credentials for a storage backend. |
+
+### `task` — 11 tools
+
+In tiers: `default`, `all`.
+
+| Tool | Description |
+|------|-------------|
+| `list_tasks` | List asynchronous tasks by OpenList task type and status. |
+| `get_task_info` | Get one task by ID using OpenList's typed task API. |
+| `delete_task` | Delete a completed or failed task. |
+| `retry_task` | Retry a failed task. |
+| `cancel_task` | Cancel a running task. |
+| `batch_cancel_tasks` | Cancel multiple running tasks by ID. |
+| `batch_delete_tasks` | Delete multiple completed or failed task records. |
+| `batch_retry_tasks` | Retry multiple failed tasks by ID. |
+| `clear_done_tasks` | Clear all completed, failed, and cancelled tasks of the given type. |
+| `clear_succeeded_tasks` | Clear only successfully completed tasks. |
+| `retry_failed_tasks` | Retry all failed tasks of the given type. |
+
+### `share` — 8 tools
+
+In tiers: `default`, `all`.
+
+| Tool | Description |
+|------|-------------|
+| `create_share` | Create share link(s) for one or more files or folders. |
+| `get_share_info` | Get detailed information about a specific share link. |
+| `list_shares` | List all existing share links. |
+| `update_share` | Update an existing share link's settings. |
+| `cancel_share` | Cancel (disable) an existing share link, preventing further access. |
+| `delete_share` | Delete a share link permanently. |
+| `enable_share` | Enable a previously disabled/cancelled share link. |
+| `disable_share` | Disable a share link temporarily without deleting it. |
+
+### `admin` — 45 tools
+
+In tiers: `all`.
+
+| Tool | Description |
+|------|-------------|
+| `list_storages` | List all configured storage backends on the OpenList server. |
+| `get_storage_info` | Get detailed information about a specific storage backend. |
+| `create_storage` | Create a new storage backend (Admin only, irreversible-ish). |
+| `update_storage` | Update an existing storage backend (Admin only). |
+| `delete_storage` | Delete a storage backend and its configuration (Admin only). |
+| `enable_storage` | Enable and remount an existing storage backend (Admin only). |
+| `disable_storage` | Disable a storage backend without deleting it (Admin only). |
+| `load_all_storages` | Reload/mount every enabled storage backend (Admin only). |
+| `list_drivers` | List all registered storage driver names on the server. |
+| `get_driver_info` | Get detailed information about a specific storage driver. |
+| `list_drivers_detail` | List all storage drivers with full configuration templates. |
+| `get_settings` | List all global settings on the OpenList server. |
+| `get_setting` | Get a single global setting by its key. |
+| `save_settings` | Update one or more global system settings. |
+| `delete_setting` | Delete a custom setting by its key. |
+| `set_aria2` | Configure the aria2 offline-download client (Admin only). |
+| `set_qbittorrent` | Configure the qBittorrent offline-download client (Admin only). |
+| `set_transmission` | Configure the Transmission offline-download client (Admin only). |
+| `set_115` | Configure the 115 offline-download client (Admin only). |
+| `set_115_open` | Configure the 115 Open offline-download client (Admin only). |
+| `set_123_pan` | Configure the 123 Pan offline-download client (Admin only). |
+| `set_123_open` | Configure the 123 Open offline-download client (Admin only). |
+| `set_pikpak` | Configure the PikPak offline-download client (Admin only). |
+| `set_thunder` | Configure the Thunder offline-download client (Admin only). |
+| `set_thunderx` | Configure the ThunderX offline-download client (Admin only). |
+| `set_thunder_browser` | Configure the Thunder Browser offline-download client (Admin only). |
+| `set_guangyapan` | Configure the GuangYaPan offline-download client (Admin only). |
+| `get_index_progress` | Get the current search index building progress. |
+| `build_search_index` | Build the full-text search index for all storages. |
+| `update_search_index` | Update the search index for specific paths. |
+| `stop_indexing` | Stop the current search index building or updating operation. |
+| `clear_search_index` | Delete all search index data. |
+| `list_users` | List all user accounts on the server (Admin only). |
+| `get_user` | Get detailed information about a specific user (Admin only). |
+| `create_user` | Create a new OpenList user (Admin only). |
+| `update_user` | Update an existing user (Admin only). |
+| `list_metas` | List all metadata configurations on the server (Admin only). |
+| `get_meta` | Get a specific metadata configuration by its ID (Admin only). |
+| `create_meta` | Attach directory metadata to an OpenList path (Admin only). |
+| `update_meta` | Update an existing metadata entry (Admin only). |
+| `delete_meta` | Delete a metadata entry (Admin only). |
+| `reset_api_token` | Reset the server API token (Admin only). |
+| `start_manual_scan` | Start a one-off manual scan of a storage mount (Admin only). |
+| `stop_manual_scan` | Stop a running manual scan (Admin only). |
+| `get_manual_scan_progress` | Get the progress of the running (or last) manual scan (Admin only). |
+
+### `advanced` — 16 tools
+
+In tiers: `all`.
+
+| Tool | Description |
+|------|-------------|
+| `get_capabilities` | Summarize this MCP server's OpenList capabilities and safety settings. |
+| `offline_download` | Download a file from a remote URL directly to the OpenList server. |
+| `batch_download` | Download multiple files from remote URLs at once. |
+| `find_duplicates` | Find potentially duplicate files in a directory tree. |
+| `content_preview` | Preview the first portion of a text file's content. |
+| `get_archive_extensions` | Get the list of archive file extensions supported by the server. |
+| `get_archive_meta` | Get metadata of an archive file without extracting it. |
+| `decompress_archive` | Decompress an archive file (zip, rar, 7z, tar.gz, etc.) on the OpenList server. |
+| `list_archive_files` | List files inside an archive without extracting it. |
+| `get_me` | Get the current authenticated user's profile information. |
+| `logout` | Logout from the OpenList server and invalidate the current token. |
+| `list_download_tools` | List available offline download tools configured on this OpenList server. |
+| `parse_torrent` | Parse a torrent file and return its contents (file list, metadata). |
+| `torrent_upload_parse` | Upload and parse a torrent file via multipart form. |
+| `generate_torrent` | Generate a .torrent file for an existing file on the OpenList server. |
+| `torrent_rapid_upload` | Rapid upload (server-side import) from a torrent file. |
+<!-- END GENERATED: tools -->
 
 ## Security
 

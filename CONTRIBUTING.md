@@ -90,6 +90,31 @@ export OPENLIST_PASSWORD="your_password"
 python scripts/live_integration.py
 ```
 
+## 新增或修改工具
+
+仓库里每项事实**只有一处来源**，其余都是它的投影 —— 所以加一个工具不再要求你记得改八个地方：
+
+| 事实 | 唯一来源 | 谁负责对齐 |
+|---|---|---|
+| 工具属于哪个组、每组有哪些工具 | `src/openlist_mcp/skills.py` 的 `SKILL_GROUP_TOOLS` | —（本身就是来源） |
+| 工具的中文说明 | `scripts/render_tool_docs.py` 的 `_ZH` | `--check` 发现缺条目即报错 |
+| 工具的英文说明 | 函数自身的 docstring（模型读到的就是它） | 生成时自动取首段 |
+| README×2 的工具表、AI_GUIDE 的分组清单 | 上面三者的投影 | `scripts/render_tool_docs.py` |
+| 散文里引用的分组/档位数量 | 注册表 | `tests/test_docs_consistency.py` |
+| CHANGELOG 小节 ↔ 版本表、包版本号 | 各自文件 | 同上 |
+
+因此流程是：
+
+1. 在对应的 `src/openlist_mcp/tools/*.py` 中定义工具，docstring 写清楚 —— **它就是模型看到的工具描述**，写得越好两边都受益
+2. 把工具名加进 `skills.py` 中对应的组
+3. 在 `scripts/render_tool_docs.py` 的 `_ZH` 里补一条中文说明
+4. 运行 `python scripts/render_tool_docs.py` 重新生成文档
+5. 运行 `pytest tests/` —— 守卫会逐条检查上表是否对齐
+
+漏了第 3 步、忘了重生成、或删掉了生成标记，`--check` 和测试都会**立刻失败并指出缺什么**，而不是等到几个月后有人偶然翻到。
+
+`pre-commit` 已配置：改动 `skills.py` 或 `tools/` 时会自动重跑生成器。
+
 ## 许可证
 
 通过提交贡献，您同意您的代码将在 MIT 许可证下发布。
