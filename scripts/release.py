@@ -95,6 +95,36 @@ def api(token: str, url: str, *, method: str = "GET", payload: dict | None = Non
             return error.code, {}
 
 
+def report_leftover_drafts(token: str) -> None:
+    """Flag stale draft releases before adding another release to the pile.
+
+    A draft is invisible to the public and cannot become `latest`, so it is
+    harmless — with one wrinkle. A draft does not claim its tag, so GitHub parks it
+    at an `untagged-<hash>` URL, where it sits in the maintainer's release list
+    indefinitely and looks like something that went wrong. This project carried two
+    of them (v0.2.5, v0.2.12, both May-June 2026), each a duplicate of a release
+    that had already been published.
+    """
+    status, releases = api(token, f"{API}/releases?per_page=100")
+    if status != 200 or not isinstance(releases, list):
+        print("  drafts          : could not read the release list")
+        return
+
+    drafts = [release for release in releases if release.get("draft")]
+    if not drafts:
+        print("  drafts          : none")
+        return
+
+    print(f"  drafts          : {len(drafts)} left over — invisible to the public, safe to delete")
+    for draft in drafts:
+        print(
+            f"      {draft['tag_name']} (id={draft['id']}, created {draft['created_at'][:10]}, "
+            f"{len(draft.get('assets', []))} assets)"
+        )
+    print("      delete one with:")
+    print(f'        curl -X DELETE -H "Authorization: Bearer $TOKEN" {API}/releases/<id>')
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -132,6 +162,8 @@ def main() -> int:
     if token is None:
         print("  note: no --token-file, so the tag can be pushed but the release notes")
         print("        cannot be finished; git will use its own credentials.")
+    else:
+        report_leftover_drafts(token)
 
     if not args.yes:
         print("\n  Plan (nothing done yet):")
