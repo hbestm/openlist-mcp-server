@@ -8,16 +8,16 @@
 
 OpenList MCP Server is a tool that lets AI agents manage files on an [OpenList](https://github.com/OpenListTeam/OpenList) instance. OpenList is a self-hosted file management platform that supports local storage, cloud drives (OneDrive, Google Drive, etc.), and more.
 
-**79 tools available** across 9 categories:
+**107 tools available** across 9 categories:
 - Browse: `list_files`, `list_dirs`, `get_file_info`, `search_files`
 - Manage: `create_folder`, `rename`, `batch_rename`, `regex_rename`, `copy`, `move`, `remove`, `remove_empty_dirs`, `recursive_move`
-- Transfer: `upload_file`, `upload_local_file`, `get_download_url`
+- Transfer: `upload_file`, `upload_local_file`, `get_download_url`, `get_direct_upload_info`, `upload_file_multipart`, `multipart_upload_status`, `multipart_upload_local_file`, `multipart_abort_upload`
 - Auth: `login`, `get_public_settings`, `get_me`, `get_capabilities`, `logout`
 - Tasks: `list_tasks`, `get_task_info`, `retry_task`, `cancel_task`, `delete_task`, `batch_cancel_tasks`, `batch_delete_tasks`, `batch_retry_tasks`, `clear_done_tasks`, `clear_succeeded_tasks`, `retry_failed_tasks`
 - Shares: `create_share`, `list_shares`, `get_share_info`, `update_share`, `enable_share`, `disable_share`, `cancel_share`, `delete_share`
 - Smart: `tree`, `disk_usage`, `find_duplicates`, `content_preview`, `batch_download`, `mirror`
-- System: `list_storages`, `get_storage_info`, `list_drivers`, `get_driver_info`, `list_drivers_detail`, `get_settings`, `get_setting`, `save_settings`, `delete_setting`, `get_index_progress`, `build_search_index`, `update_search_index`, `stop_indexing`, `clear_search_index`, `list_users`, `get_user`, `list_metas`, `get_meta`, `reset_api_token`, `list_my_ssh_keys`, `add_ssh_key`, `delete_ssh_key`, `update_current_user`
-- Advanced: `offline_download`, `decompress_archive`, `get_archive_meta`, `list_archive_files`, `list_download_tools`, `get_archive_extensions`, `parse_torrent`, `torrent_upload_parse`, `generate_torrent`, `torrent_rapid_upload`
+- System: `list_storages`, `get_storage_info`, `create_storage`, `update_storage`, `delete_storage`, `enable_storage`, `disable_storage`, `load_all_storages`, `list_drivers`, `get_driver_info`, `list_drivers_detail`, `get_settings`, `get_setting`, `save_settings`, `delete_setting`, `get_index_progress`, `build_search_index`, `update_search_index`, `stop_indexing`, `clear_search_index`, `start_manual_scan`, `stop_manual_scan`, `get_manual_scan_progress`, `list_users`, `get_user`, `create_user`, `update_user`, `list_metas`, `get_meta`, `reset_api_token`, `list_my_ssh_keys`, `add_ssh_key`, `delete_ssh_key`, `update_current_user`
+- Advanced: `offline_download`, `set_aria2`, `set_qbittorrent`, `set_transmission`, `set_115`, `set_115_open`, `set_123_pan`, `set_123_open`, `set_pikpak`, `set_thunder`, `set_thunderx`, `set_thunder_browser`, `set_guangyapan`, `decompress_archive`, `get_archive_meta`, `list_archive_files`, `list_download_tools`, `get_archive_extensions`, `parse_torrent`, `torrent_upload_parse`, `generate_torrent`, `torrent_rapid_upload`
 
 ---
 

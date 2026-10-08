@@ -11,11 +11,13 @@ Environment Variables:
     OPENLIST_URL      - Base URL of your OpenList instance (required)
     OPENLIST_USERNAME - Username for authentication (required)
     OPENLIST_PASSWORD - Password for authentication (required)
+    OPENLIST_ALLOW_HTTP - When true, allows an unencrypted http:// OPENLIST_URL (optional)
     OPENLIST_TOTP_SECRET - TOTP secret for automatic 2FA (optional)
     OPENLIST_READONLY - When true, blocks all write/modify tools (optional)
     OPENLIST_ALLOWED_PATHS - Comma-separated path allowlist (optional)
+    OPENLIST_LOCAL_UPLOAD_ROOTS - Directories upload_local_file may read; the tool is off unless set (optional)
     OPENLIST_SKILLS   - Tool groups to load: core|default|all|custom (optional)
-                        core=~25tools, default=~44tools, all=87tools(default)
+                        core=30 tools, default=49 tools, all=107 tools (default: core)
                         custom example: "fs,transfer,task"
 """
 
